@@ -117,7 +117,7 @@
     <h1>A partner briefs four specialists at once, then reads their reports <em>against each other</em></h1>
     <svg viewBox="0 0 1200 528" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="deal-desk-how-title deal-desk-how-desc" style="margin-top:14px">
       <title id="deal-desk-how-title">Deal Desk swarm architecture</title>
-      <desc id="deal-desk-how-desc">A Senior Partner agent reads the Acme RFP, briefs four specialist agents in parallel, each with its own playbook skill, takes their reports back and writes the branded proposal.</desc>
+      <desc id="deal-desk-how-desc">A Senior Partner agent reads the Acme RFP, briefs four specialist agents in parallel, each with its own playbook skill, takes their reports back and writes the branded proposal and a five-slide pitch deck.</desc>
       <defs>
         <marker id="dd-arrow" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto-start-reverse"><polygon points="0 0, 8 3, 0 6" fill="#bfc0c0"/></marker>
         <marker id="dd-arrow-accent" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#f08a59"/></marker>
@@ -157,10 +157,11 @@
       <text x="436" y="182" fill="#bfc0c0" font-size="12" font-family="'Geist Mono', monospace" text-anchor="middle">opus 5.5 · cross-checks</text>
 
       <!-- Focal 2: the deliverable -->
-      <rect x="312" y="360" width="248" height="80" rx="6" fill="#2d3142"/>
-      <rect x="312" y="360" width="248" height="80" rx="6" fill="rgba(240,138,89,0.10)" stroke="#f08a59" stroke-width="1.2"/>
-      <text x="436" y="394" fill="#f5f5f5" font-size="16" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">Branded proposal</text>
+      <rect x="312" y="360" width="248" height="96" rx="6" fill="#2d3142"/>
+      <rect x="312" y="360" width="248" height="96" rx="6" fill="rgba(240,138,89,0.10)" stroke="#f08a59" stroke-width="1.2"/>
+      <text x="436" y="392" fill="#f5f5f5" font-size="16" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">Proposal + pitch deck</text>
       <text x="436" y="414" fill="#bfc0c0" font-size="12" font-family="'Geist Mono', monospace" text-anchor="middle">proposal-response.docx</text>
+      <text x="436" y="432" fill="#bfc0c0" font-size="12" font-family="'Geist Mono', monospace" text-anchor="middle">pitch-deck.html</text>
 
       <!-- Specialists -->
       <rect x="708" y="64" width="420" height="64" rx="6" fill="#2d3142"/>
@@ -202,7 +203,7 @@
       <text x="904" y="512" fill="#949eb2" font-size="11" font-family="'Geist Mono', monospace">brief out, report back</text>
     </svg>
     <footer><span>Playbooks are Skills: plain markdown in skills/, owned by each team</span><span>2 / 5</span></footer>
-    <aside class="note">We built a deal desk on Claude Managed Agents. A Senior Partner agent reads the RFP and briefs four specialists at once. Each has its own context and judges the RFP against the firm's rulebook for its lane: the pricing playbook, the legal checklist, the capability map, the battlecards. Those rulebooks are plain markdown files the business owns. Then the partner reads the four reports against each other and writes the proposal.</aside>
+    <aside class="note">We built a deal desk on Claude Managed Agents. A Senior Partner agent reads the RFP and briefs four specialists at once. Each has its own context and judges the RFP against the firm's rulebook for its lane: the pricing playbook, the legal checklist, the capability map, the battlecards. Those rulebooks are plain markdown files the business owns. Then the partner reads the four reports against each other and writes the proposal, plus a five-slide deck for the executive read.</aside>
   </section>
 
   <!-- ───────────────────────── 3. Live ───────────────────────── -->
@@ -212,7 +213,7 @@
     <div class="live">
       <div>
         <div class="big">0.7 s</div>
-        <p class="big-cap">from the first brief to the fourth in the rehearsal. The four reports took 46 s of wall time for 148 s of specialist work, and none of them saw the others' work, so none anchors on another's answer.</p>
+        <p class="big-cap">from the first brief to the fourth in the rehearsal. The four reports took 60 s of wall time for 149 s of specialist work, and none of them saw the others' work, so none anchors on another's answer.</p>
         <p class="cue">→ Switch to the terminal</p>
       </div>
       <div class="watch">
@@ -226,7 +227,7 @@
       </div>
     </div>
     <footer><span>Fallback: the rehearsal recording, or tests/offline_check.py at $0</span><span>3 / 5</span></footer>
-    <aside class="note">Here's the live run. Four briefs go out within a second, and the reports come back in 46 seconds of wall time for 148 seconds of work. None of the specialists sees the others' work, so nobody anchors on anybody. Every thread is traced in the Console, so you can audit why each one said what it said. (Leave the run going; come back for its cost line at the end, or say it's still working.)</aside>
+    <aside class="note">Here's the live run. Four briefs go out within a second, and the reports come back in 60 seconds of wall time for 149 seconds of work. None of the specialists sees the others' work, so nobody anchors on anybody. Every thread is traced in the Console, so you can audit why each one said what it said. (Leave the run going; come back for its cost line at the end, or say it's still working.)</aside>
   </section>
 
   <!-- ───────────────────────── 4. The seam ───────────────────────── -->
@@ -235,7 +236,7 @@
     <h1>Each report is right alone. Together they reveal that <em>the exit cancels the discount</em></h1>
     <svg viewBox="0 0 1200 400" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="deal-desk-seam-title deal-desk-seam-desc" style="margin-top:22px">
       <title id="deal-desk-seam-title">The C5 seam: termination against the discount</title>
-      <desc id="deal-desk-seam-desc">The Pricing report caps the discount at 25% with a three-year commitment, the Legal report allows an exit at will, and the Senior Partner combines them into three priced options in the proposal.</desc>
+      <desc id="deal-desk-seam-desc">The Pricing report caps the discount at 25% with a three-year commitment, the Legal report allows an exit at will, and the Senior Partner grants the exit but re-rates the fees to the one-year price on an exit before month 36.</desc>
       <defs>
         <marker id="seam-arrow" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#bfc0c0"/></marker>
         <marker id="seam-arrow-accent" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#f08a59"/></marker>
@@ -276,50 +277,46 @@
       <text x="616" y="220" fill="#bfc0c0" font-size="12" font-family="'Geist Mono', monospace" text-anchor="middle">a 30-day exit cancels the</text>
       <text x="616" y="236" fill="#bfc0c0" font-size="12" font-family="'Geist Mono', monospace" text-anchor="middle">commitment that earns 25%</text>
 
-      <!-- Output: what went into the docx (rehearsal run 2) -->
+      <!-- Output: what went into the docx (rehearsal run 3) -->
       <rect x="856" y="80" width="304" height="240" rx="6" fill="#2d3142"/>
       <rect x="856" y="80" width="304" height="240" rx="6" fill="#393e53" stroke="#f5f5f5" stroke-width="1"/>
       <rect x="868" y="90" width="92" height="16" rx="2" fill="transparent" stroke="rgba(245,245,245,0.40)" stroke-width="0.8"/>
       <text x="914" y="102" fill="#949eb2" font-size="11" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">IN THE DOCX</text>
       <text x="1008" y="140" fill="#f5f5f5" font-size="16" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">Discount follows commitment</text>
       <line x1="876" y1="160" x2="1140" y2="160" stroke="rgba(245,245,245,0.12)" stroke-width="1"/>
-      <text x="880" y="188" fill="#f5f5f5" font-size="12" font-family="'Geist Mono', monospace">A</text>
-      <text x="900" y="188" fill="#bfc0c0" font-size="12" font-family="'Geist Mono', monospace">flexible term</text>
-      <text x="1068" y="188" fill="#f5f5f5" font-size="12" font-family="'Geist Mono', monospace" text-anchor="end">20%</text>
-      <text x="1136" y="188" fill="#f5f5f5" font-size="12" font-family="'Geist Mono', monospace" text-anchor="end">$2.93M</text>
-      <line x1="876" y1="204" x2="1140" y2="204" stroke="rgba(245,245,245,0.12)" stroke-width="1"/>
-      <text x="880" y="228" fill="#f5f5f5" font-size="12" font-family="'Geist Mono', monospace">B</text>
-      <text x="900" y="228" fill="#bfc0c0" font-size="12" font-family="'Geist Mono', monospace">3 years committed</text>
-      <text x="1068" y="228" fill="#f5f5f5" font-size="12" font-family="'Geist Mono', monospace" text-anchor="end">25%</text>
-      <text x="1136" y="228" fill="#f5f5f5" font-size="12" font-family="'Geist Mono', monospace" text-anchor="end">$2.75M</text>
-      <text x="900" y="248" fill="#949eb2" font-size="11" font-family="'Geist Mono', monospace">+ a reference; exit only</text>
-      <text x="900" y="264" fill="#949eb2" font-size="11" font-family="'Geist Mono', monospace">from the end of year 3</text>
-      <line x1="876" y1="280" x2="1140" y2="280" stroke="rgba(245,245,245,0.12)" stroke-width="1"/>
-      <text x="1008" y="304" fill="#949eb2" font-size="11" font-family="'Geist Mono', monospace" text-anchor="middle">five-year totals · fees fixed at signature</text>
+      <text x="880" y="184" fill="#bfc0c0" font-size="12" font-family="'Geist Mono', monospace">20% off, flat 5 years</text>
+      <text x="1136" y="184" fill="#f5f5f5" font-size="12" font-family="'Geist Mono', monospace" text-anchor="end">$576K/yr</text>
+      <text x="880" y="204" fill="#949eb2" font-size="11" font-family="'Geist Mono', monospace">no escalators · $2.88M in total</text>
+      <line x1="876" y1="218" x2="1140" y2="218" stroke="rgba(245,245,245,0.12)" stroke-width="1"/>
+      <text x="880" y="240" fill="#bfc0c0" font-size="12" font-family="'Geist Mono', monospace">exit on 90 days' notice</text>
+      <text x="880" y="258" fill="#949eb2" font-size="11" font-family="'Geist Mono', monospace">pro-rated refund, no exit fee</text>
+      <line x1="876" y1="272" x2="1140" y2="272" stroke="rgba(245,245,245,0.12)" stroke-width="1"/>
+      <text x="880" y="292" fill="#f08a59" font-size="12" font-family="'Geist Mono', monospace">exit before month 36:</text>
+      <text x="880" y="308" fill="#f08a59" font-size="12" font-family="'Geist Mono', monospace">fees re-rated to 1-year price</text>
     </svg>
-    <p class="caption">Acme asked for 35% off <b>and</b> a free exit. Read one report at a time, both look acceptable. The partner tied the bigger discount to the commitment that justifies it, and let Acme choose.</p>
-    <footer><span>From rehearsal run 2's proposal-response.docx, commercial section</span><span>4 / 5</span></footer>
-    <aside class="note">This is why the cross-check matters. Pricing says 25% off is the ceiling, and only with a three-year commitment. Legal says an exit at will is negotiable. Each report is fine on its own. Read together, a 30-day exit cancels the commitment the discount pays for. The partner caught that: 20% off with flexibility, or 25% only for a committed three-year term. Acme chooses.</aside>
+    <p class="caption">Acme asked for 35% off <b>and</b> a free exit. Read one report at a time, both look acceptable. The partner kept the exit but <b>re&#8209;rates the fees if Acme leaves before month 36</b>, so the discount is earned by the commitment that justifies it.</p>
+    <footer><span>From rehearsal run 3's proposal-response.docx, commercial section</span><span>4 / 5</span></footer>
+    <aside class="note">This is why the cross-check matters. Pricing says 25% off is the ceiling, and only with a three-year commitment. Legal says an exit at will is negotiable. Each report is fine on its own. Read together, a 30-day exit cancels the commitment the discount pays for. The partner caught that: 20% off, $576K a year, flat for five years. Acme can still leave on 90 days' notice with a pro-rated refund, but leave before month 36 and the fees it used are re-rated to the one-year price.</aside>
   </section>
 
   <!-- ───────────────────────── 5. Proof ───────────────────────── -->
   <section class="slide" data-time="1:35–2:00">
-    <p class="eyebrow">Proof · demo/scorecard.py on the rehearsal docx</p>
+    <p class="eyebrow">Proof · demo/scorecard.py on the rehearsal docx and deck</p>
     <h1>It catches the traps, and you can change its rules <em>without code</em></h1>
     <div class="stats">
       <div class="stat focal"><div class="n">12 / 13</div><div class="l">traps in the Acme RFP handled, against an answer key written before the run</div></div>
       <div class="stat"><div class="n">4 / 5</div><div class="l">of the traps that only show when two lanes compare notes</div></div>
-      <div class="stat"><div class="n">$1.11</div><div class="l">for the whole review, capped at $10</div></div>
-      <div class="stat"><div class="n">4.3 min</div><div class="l">from RFP to branded .docx</div></div>
+      <div class="stat"><div class="n">$1.79</div><div class="l">for the whole review, capped at $10</div></div>
+      <div class="stat"><div class="n">6.3 min</div><div class="l">from RFP to branded .docx and deck</div></div>
     </div>
     <div class="own">
       <p><b>The firm's knowledge is a file the business owns.</b> The pricing desk edits <span class="mono">pricing-playbook/SKILL.md</span>, <span class="mono">setup_swarm.py</span> uploads a new version, and the next deal follows the new rule.</p>
       <p><b>Governed by design.</b> Specialists get read-only tools and inputs, every thread is traced, a $0 offline check gates every change, and nothing is sent until a human partner signs off.</p>
     </div>
     <p class="close">Your deal desk: a partner and four specialists working to your playbooks, in parallel, who read each other's notes.</p>
-    <p class="source">Rehearsal run 2, 4 Nov 2026, final demo swarm, session sesn_019zRXdTu6K1DS7fi2tWR3Vo, checked by hand. The one partial is C12: it positions inside Acme's Microsoft estate instead of naming Fabric.</p>
+    <p class="source">Rehearsal run 3, 4 Nov 2026, current demo swarm, session sesn_01KUVcS11hHMPXp6hP2UsEpY, checked by hand. The one partial is C12: it answers Fabric on real-time ingest, not on E5 or TCO.</p>
     <footer><span>BTS-Synthetic Deal Desk</span><span>5 / 5</span></footer>
-    <aside class="note">We scored the rehearsal against 13 traps planted in the RFP. It handled 12, including 4 of the 5 that only show up when two lanes compare notes. That review cost $1.11 and took under five minutes. Nothing goes out without a human partner's sign-off. It's your deal desk: a partner and four specialists working to your playbooks, in parallel, who read each other's notes.</aside>
+    <aside class="note">We scored the rehearsal against 13 traps planted in the RFP. It handled 12, including 4 of the 5 that only show up when two lanes compare notes. That review, with the proposal and the deck, cost $1.79 and took about six minutes. Nothing goes out without a human partner's sign-off. It's your deal desk: a partner and four specialists working to your playbooks, in parallel, who read each other's notes.</aside>
   </section>
 
 </div></div>
