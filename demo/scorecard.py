@@ -46,7 +46,8 @@ PCT_WE_CAN_GIVE = r"\b(1[0-9]|2[0-9]|30)(\.\d)?\s?%"
 # are read against each other.
 CHECKS = [
     ("C1", "35% discount demand answered with a playbook-sized discount",
-     "Pricing", False, [r"35\s?%", PCT_WE_CAN_GIVE]),
+     "Pricing", False,
+     [r"35\s?%", PCT_WE_CAN_GIVE + r"|(do not|cannot|can't|won't) meet|\bTCO\b|cost of ownership"]),
     ("C2", "5-year fixed price / no escalators vs the 3-year escalator rule",
      "Pricing", False, [r"escalat|CPI|renewal years?|indexation|price step",
       r"CPI|capped|\d\s?%|forgo|waive|step|schedule"]),
@@ -105,10 +106,23 @@ def find(text: str, groups: list) -> str | None:
     return None
 
 
+def default_paths() -> list[Path]:
+    """The proposal, plus the notes only if the same run downloaded them (outputs/ keeps
+    files from earlier runs: a run that writes no notes leaves the old ones behind)."""
+    docx, notes = DEFAULTS
+    if not docx.is_file():
+        return []
+    if notes.is_file() and abs(notes.stat().st_mtime - docx.stat().st_mtime) < 120:
+        return [docx, notes]
+    if notes.is_file():
+        print(f"  (skipping {notes.name}: it is from an earlier run)\n")
+    return [docx]
+
+
 def main() -> None:
     args = [Path(a) for a in sys.argv[1:] if not a.startswith("-")]
     show = "--show" in sys.argv
-    paths = args or [p for p in DEFAULTS if p.is_file()]
+    paths = args or default_paths()
     missing = [p for p in args if not p.is_file()]
     if missing or not paths:
         raise SystemExit(f"No such file: {missing[0] if missing else DEFAULTS[0]}. "
