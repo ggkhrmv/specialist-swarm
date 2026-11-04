@@ -138,7 +138,19 @@ them if a later run differs.
 | 4:00 | Terminal | `uv run python demo/scorecard.py` | "13 traps in this RFP. It handled 12, including 4 of the 5 that only show when two teams compare notes. The one it softened, Fabric, it handled by positioning inside Microsoft." Quote the score of the document you actually show. |
 | 4:30 | Run history (end of the live run) | Cost and time | "That review cost about a dollar and took under 5 minutes. Your playbooks, your format, every deal." |
 
-**2-minute cut:** the 0:30 fan-out, the 2:00 seam, the docx headline and the scorecard number.
+**2-minute cut:** the 0:30 fan-out, the 2:00 seam, the docx headline and the scorecard number. The deck for it is
+[`slides.html`](slides.html): open it in a browser and use the arrow keys. Press `N` for the speaker notes with each
+slide's time slot, `T` for a rehearsal clock against 2:00, and `F` for full screen. It prints to PDF one slide per page
+as a backup. Its numbers are run 2's (the final swarm, table below). The diagrams were made with the `diagram-design`
+skill (dark skin).
+
+| Time | Slide | The point |
+| --- | --- | --- |
+| 0:00–0:20 | 1. The asks | Acme's four demands, and which one hides a seam |
+| 0:20–0:50 | 2. How it works | Partner, four specialists in parallel, playbooks as Skills, cross-check, docx |
+| 0:50–1:10 | 3. Live | Switch to the terminal: four `[brief →]` lines within a second, then the fan-in line |
+| 1:10–1:35 | 4. The seam (C5) | Pricing's 25% needs a 3-year commitment and Legal allows an exit at will; the partner ties the bigger discount to the commitment |
+| 1:35–2:00 | 5. Proof | 12/13 traps, 4/5 seams, $1.11, 4.3 minutes; edit a markdown file to change a rule |
 
 **Optional act: change the rule, change the answer (+2 min).** This is the strongest proof of claim 2. In a separate
 worktree, change one line of a playbook, e.g. make Net 60 acceptable for every enterprise deal in

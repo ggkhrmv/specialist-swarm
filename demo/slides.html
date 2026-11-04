@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Deal Desk swarm: the 2-minute pitch</title>
+  <!-- Fonts from Google Fonts; offline, the system fallbacks take over. -->
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    /* Skin: diagram-design dark editorial (skills/diagram-design/references/style-guide.md, dark column). */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --paper: #2d3142; --paper-2: #393e53; --ink: #f5f5f5; --muted: #bfc0c0; --soft: #949eb2;
+      --rule: rgba(245,245,245,0.12); --accent: #f08a59; --accent-tint: rgba(240,138,89,0.10);
+      --font-sans: 'Geist', system-ui, sans-serif;
+      --font-serif: 'Instrument Serif', Georgia, serif;
+      --font-mono: 'Geist Mono', ui-monospace, Menlo, monospace;
+    }
+    html, body { height: 100%; background: var(--paper); color: var(--ink); font-family: var(--font-sans); overflow: hidden; }
+    #viewport { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; }
+    /* A fixed 1280x720 stage, scaled to the window as a whole, so the diagrams keep the presentation type ramp. */
+    #stage { width: 1280px; height: 720px; position: relative; transform-origin: center center; flex: none; }
+    .slide { position: absolute; inset: 0; padding: 36px 40px 0; display: none; }
+    .slide.active { display: block; }
+    .eyebrow { font-family: var(--font-mono); font-size: 13px; font-weight: 500; letter-spacing: 0.18em; text-transform: uppercase; color: var(--soft); }
+    h1 { font-family: var(--font-serif); font-weight: 400; font-size: 40px; line-height: 1.12; letter-spacing: -0.02em; margin-top: 10px; }
+    h1 em { color: var(--accent); font-style: italic; }
+    .lede { font-size: 20px; line-height: 1.45; color: var(--muted); max-width: 1000px; margin-top: 18px; }
+    .mono { font-family: var(--font-mono); }
+    svg { display: block; width: 1200px; }
+    footer { position: absolute; left: 40px; right: 40px; bottom: 22px; display: flex; justify-content: space-between;
+             font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.08em; color: var(--soft); }
+
+    /* Slide 1: the asks, as a table (a 3-column table beats a diagram here). */
+    table.asks { margin-top: 36px; border-collapse: collapse; width: 1200px; }
+    .asks th { text-align: left; font-family: var(--font-mono); font-size: 12px; font-weight: 500; letter-spacing: 0.14em;
+               text-transform: uppercase; color: var(--soft); padding: 0 16px 12px 0; border-bottom: 1px solid var(--rule); }
+    .asks td { font-size: 22px; padding: 18px 16px 18px 0; border-bottom: 1px solid var(--rule); vertical-align: baseline; }
+    .asks td.sec { font-family: var(--font-mono); font-size: 15px; color: var(--soft); width: 90px; }
+    .asks td.ask { font-weight: 600; width: 440px; }
+    .asks td.hit { color: var(--muted); }
+    .asks tr.seam td.ask { color: var(--accent); }
+    .kicker { font-family: var(--font-serif); font-style: italic; font-size: 30px; margin-top: 34px; }
+
+    /* Slide 3: the live cue. */
+    .live { display: grid; grid-template-columns: 1.15fr 0.85fr; gap: 56px; margin-top: 40px; align-items: start; }
+    .big { font-family: var(--font-serif); font-size: 168px; line-height: 0.9; color: var(--accent); letter-spacing: -0.03em; }
+    .big-cap { font-size: 20px; color: var(--muted); margin-top: 18px; line-height: 1.45; max-width: 560px; }
+    .watch { border: 1px solid var(--rule); border-radius: 6px; padding: 24px 28px; background: var(--paper-2); }
+    .watch h2 { font-family: var(--font-mono); font-size: 12px; font-weight: 500; letter-spacing: 0.16em; text-transform: uppercase; color: var(--soft); margin-bottom: 14px; }
+    .watch li { list-style: none; font-size: 18px; line-height: 1.4; padding: 10px 0; border-top: 1px solid var(--rule); }
+    .watch li:first-of-type { border-top: 0; }
+    .watch code { font-family: var(--font-mono); font-size: 15px; color: var(--ink); background: rgba(245,245,245,0.06); padding: 1px 6px; border-radius: 2px; }
+    .cue { margin-top: 44px; font-family: var(--font-mono); font-size: 15px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--accent); }
+
+    /* Slide 4 caption. */
+    .caption { font-size: 20px; line-height: 1.45; color: var(--muted); max-width: 1120px; margin-top: 8px; }
+    .caption b { color: var(--ink); font-weight: 600; }
+
+    /* Slide 5: stats in varied widths, no shadows, hairline borders. */
+    .stats { display: grid; grid-template-columns: 1.25fr 1.1fr 0.9fr 0.9fr; gap: 16px; margin-top: 40px; }
+    .stat { border: 1px solid var(--rule); border-radius: 6px; padding: 22px 24px 20px; }
+    .stat.focal { border-color: var(--accent); background: var(--accent-tint); }
+    .stat .n { font-family: var(--font-serif); font-size: 76px; line-height: 1; letter-spacing: -0.02em; }
+    .stat.focal .n { color: var(--accent); }
+    .stat .l { font-size: 16px; color: var(--muted); margin-top: 10px; line-height: 1.35; }
+    .own { display: grid; grid-template-columns: 0.95fr 1.05fr; gap: 40px; margin-top: 36px; }
+    .own p { font-size: 19px; line-height: 1.45; color: var(--muted); }
+    .own p b { color: var(--ink); font-weight: 600; }
+    .close { font-family: var(--font-serif); font-style: italic; font-size: 28px; line-height: 1.25; margin-top: 34px; }
+    .source { font-family: var(--font-mono); font-size: 11px; color: var(--soft); margin-top: 14px; letter-spacing: 0.04em; }
+
+    /* Speaker notes: press N. Hidden from the room by default. */
+    #notes { position: fixed; left: 0; right: 0; bottom: 0; background: #1f2230; border-top: 1px solid var(--accent);
+             padding: 14px 24px 16px; font-size: 16px; line-height: 1.5; color: var(--ink); display: none; z-index: 5; }
+    #notes .t { font-family: var(--font-mono); font-size: 13px; color: var(--accent); margin-right: 10px; }
+    #notes.on { display: block; }
+    aside.note { display: none; }
+    #clock { position: fixed; top: 10px; right: 14px; font-family: var(--font-mono); font-size: 13px; color: var(--soft); display: none; z-index: 6; }
+    #clock.on { display: block; }
+    #clock.over { color: var(--accent); }
+
+    @media print {
+      @page { size: 1280px 720px; margin: 0; }
+      html, body { overflow: visible; height: auto; }
+      #viewport { position: static; display: block; }
+      #stage { transform: none !important; width: 1280px; height: auto; }
+      .slide { display: block !important; position: relative; height: 720px; page-break-after: always; break-after: page; }
+      #notes, #clock { display: none !important; }
+    }
+  </style>
+</head>
+<body>
+<div id="viewport"><div id="stage">
+
+  <!-- ───────────────────────── 1. Problem ───────────────────────── -->
+  <section class="slide active" data-time="0:00–0:20">
+    <p class="eyebrow">Deal Desk swarm · Partner Basecamp, Card A</p>
+    <h1>An RFP's worst risks sit <em>between</em> the teams that review it</h1>
+    <table class="asks">
+      <thead><tr><th>Acme Corp asks for</th><th>RFP §</th><th>It collides with</th></tr></thead>
+      <tbody>
+        <tr><td class="ask">35% off list</td><td class="sec">3.3</td><td class="hit">Pricing playbook ceiling: 25%, only for 3 years committed</td></tr>
+        <tr class="seam"><td class="ask">Exit any time, 30 days, no fees</td><td class="sec">3.5</td><td class="hit">Voids the 3-year commitment the discount pays for</td></tr>
+        <tr><td class="ask">Uncapped breach liability</td><td class="sec">4.1</td><td class="hit">Our insurance won't cover it</td></tr>
+        <tr><td class="ask">99.99% uptime</td><td class="sec">4.3</td><td class="hit">We offer 99.95%. More takes active-active at $80–120K a year</td></tr>
+      </tbody>
+    </table>
+    <p class="kicker">Four teams and a week of email, and nobody owns the gaps between them.</p>
+    <footer><span>BTS-Synthetic Deal Desk</span><span>1 / 5</span></footer>
+    <aside class="note">Acme wants 35% off, an exit at any time on 30 days' notice, uncapped liability and 99.99% uptime. Pricing, Legal, Solutions and Competitive would each review that on their own, over a week of email. The worst risk is the second row: it only shows up when Pricing and Legal read each other's work, and nobody owns that.</aside>
+  </section>
+
+  <!-- ───────────────────────── 2. How it works ───────────────────────── -->
+  <section class="slide" data-time="0:20–0:50">
+    <p class="eyebrow">How it works · Claude Managed Agents, one session</p>
+    <h1>A partner briefs four specialists at once, then reads their reports <em>against each other</em></h1>
+    <svg viewBox="0 0 1200 528" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="deal-desk-how-title deal-desk-how-desc" style="margin-top:14px">
+      <title id="deal-desk-how-title">Deal Desk swarm architecture</title>
+      <desc id="deal-desk-how-desc">A Senior Partner agent reads the Acme RFP, briefs four specialist agents in parallel, each with its own playbook skill, takes their reports back and writes the branded proposal.</desc>
+      <defs>
+        <marker id="dd-arrow" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto-start-reverse"><polygon points="0 0, 8 3, 0 6" fill="#bfc0c0"/></marker>
+        <marker id="dd-arrow-accent" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#f08a59"/></marker>
+      </defs>
+      <rect width="100%" height="100%" fill="#2d3142"/>
+
+      <!-- Zone: the four specialists -->
+      <rect x="680" y="32" width="476" height="432" rx="8" fill="rgba(245,245,245,0.02)" stroke="rgba(245,245,245,0.10)" stroke-width="0.8"/>
+      <rect x="752" y="28" width="332" height="16" rx="2" fill="#2d3142"/>
+      <text x="918" y="40" fill="#949eb2" font-size="11" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.14em">IN PARALLEL · OWN CONTEXT · OWN PLAYBOOK</text>
+
+      <!-- Arrows first, nodes after -->
+      <line x1="224" y1="156" x2="311" y2="156" stroke="#bfc0c0" stroke-width="1.2" marker-end="url(#dd-arrow)"/>
+      <line x1="436" y1="208" x2="436" y2="359" stroke="#f08a59" stroke-width="1.4" marker-end="url(#dd-arrow-accent)"/>
+      <rect x="444" y="276" width="60" height="16" rx="2" fill="#2d3142"/>
+      <text x="474" y="288" fill="#f08a59" font-size="12" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">WRITES</text>
+      <!-- Fan-out: brief out, report back (both ends marked). Turn order 592 < 616 < 640 keeps every path crossing-free. -->
+      <path d="M 561,124 H 632 Q 640,124 640,116 V 104 Q 640,96 648,96 H 707" fill="none" stroke="#bfc0c0" stroke-width="1.2" marker-start="url(#dd-arrow)" marker-end="url(#dd-arrow)"/>
+      <path d="M 561,144 H 632 Q 640,144 640,152 V 192 Q 640,200 648,200 H 707" fill="none" stroke="#bfc0c0" stroke-width="1.2" marker-start="url(#dd-arrow)" marker-end="url(#dd-arrow)"/>
+      <path d="M 561,168 H 608 Q 616,168 616,176 V 296 Q 616,304 624,304 H 707" fill="none" stroke="#bfc0c0" stroke-width="1.2" marker-start="url(#dd-arrow)" marker-end="url(#dd-arrow)"/>
+      <path d="M 561,188 H 584 Q 592,188 592,196 V 400 Q 592,408 600,408 H 707" fill="none" stroke="#bfc0c0" stroke-width="1.2" marker-start="url(#dd-arrow)" marker-end="url(#dd-arrow)"/>
+
+      <!-- Input: the RFP -->
+      <rect x="40" y="120" width="184" height="72" rx="6" fill="#2d3142"/>
+      <rect x="40" y="120" width="184" height="72" rx="6" fill="rgba(191,192,192,0.10)" stroke="#949eb2" stroke-width="1"/>
+      <rect x="52" y="128" width="48" height="16" rx="2" fill="transparent" stroke="rgba(191,192,192,0.50)" stroke-width="0.8"/>
+      <text x="76" y="140" fill="#949eb2" font-size="11" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">INPUT</text>
+      <text x="132" y="166" fill="#f5f5f5" font-size="16" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">Acme RFP</text>
+      <text x="132" y="184" fill="#bfc0c0" font-size="12" font-family="'Geist Mono', monospace" text-anchor="middle">mounted read-only</text>
+
+      <!-- Focal 1: the Senior Partner -->
+      <rect x="312" y="104" width="248" height="104" rx="6" fill="#2d3142"/>
+      <rect x="312" y="104" width="248" height="104" rx="6" fill="rgba(240,138,89,0.10)" stroke="#f08a59" stroke-width="1.2"/>
+      <rect x="324" y="114" width="92" height="16" rx="2" fill="transparent" stroke="rgba(240,138,89,0.60)" stroke-width="0.8"/>
+      <text x="370" y="126" fill="#f08a59" font-size="11" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">COORDINATOR</text>
+      <text x="436" y="162" fill="#f5f5f5" font-size="16" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">Senior Partner</text>
+      <text x="436" y="182" fill="#bfc0c0" font-size="12" font-family="'Geist Mono', monospace" text-anchor="middle">opus 5.5 · cross-checks</text>
+
+      <!-- Focal 2: the deliverable -->
+      <rect x="312" y="360" width="248" height="80" rx="6" fill="#2d3142"/>
+      <rect x="312" y="360" width="248" height="80" rx="6" fill="rgba(240,138,89,0.10)" stroke="#f08a59" stroke-width="1.2"/>
+      <text x="436" y="394" fill="#f5f5f5" font-size="16" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">Branded proposal</text>
+      <text x="436" y="414" fill="#bfc0c0" font-size="12" font-family="'Geist Mono', monospace" text-anchor="middle">proposal-response.docx</text>
+
+      <!-- Specialists -->
+      <rect x="708" y="64" width="420" height="64" rx="6" fill="#2d3142"/>
+      <rect x="708" y="64" width="420" height="64" rx="6" fill="#393e53" stroke="#f5f5f5" stroke-width="1"/>
+      <text x="918" y="92" fill="#f5f5f5" font-size="16" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">Pricing Specialist</text>
+      <text x="918" y="112" fill="#bfc0c0" font-size="12" font-family="'Geist Mono', monospace" text-anchor="middle">sonnet 5.5 · pricing-playbook · past-wins.json</text>
+
+      <rect x="708" y="168" width="420" height="64" rx="6" fill="#2d3142"/>
+      <rect x="708" y="168" width="420" height="64" rx="6" fill="#393e53" stroke="#f5f5f5" stroke-width="1"/>
+      <text x="918" y="196" fill="#f5f5f5" font-size="16" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">Legal Reviewer</text>
+      <text x="918" y="216" fill="#bfc0c0" font-size="12" font-family="'Geist Mono', monospace" text-anchor="middle">sonnet 5.5 · legal-checklist</text>
+
+      <rect x="708" y="272" width="420" height="64" rx="6" fill="#2d3142"/>
+      <rect x="708" y="272" width="420" height="64" rx="6" fill="#393e53" stroke="#f5f5f5" stroke-width="1"/>
+      <text x="918" y="300" fill="#f5f5f5" font-size="16" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">Technical Fit Specialist</text>
+      <text x="918" y="320" fill="#bfc0c0" font-size="12" font-family="'Geist Mono', monospace" text-anchor="middle">sonnet 5.5 · product-overview (capability map)</text>
+
+      <rect x="708" y="376" width="420" height="64" rx="6" fill="#2d3142"/>
+      <rect x="708" y="376" width="420" height="64" rx="6" fill="#393e53" stroke="#f5f5f5" stroke-width="1"/>
+      <text x="918" y="404" fill="#f5f5f5" font-size="16" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">Competitive Intel Analyst</text>
+      <text x="918" y="424" fill="#bfc0c0" font-size="12" font-family="'Geist Mono', monospace" text-anchor="middle">haiku 5.5 · competitive-intel (battlecards)</text>
+
+      <!-- Callout: the cross-check (margin, bottom-left) -->
+      <text x="40" y="256" fill="#f5f5f5" font-size="20" font-style="italic" font-family="'Instrument Serif', Georgia, serif">reads all four reports</text>
+      <text x="40" y="280" fill="#f5f5f5" font-size="20" font-style="italic" font-family="'Instrument Serif', Georgia, serif">against each other before</text>
+      <text x="40" y="304" fill="#f5f5f5" font-size="20" font-style="italic" font-family="'Instrument Serif', Georgia, serif">it writes a word</text>
+      <path d="M 196,248 Q 296,240 328,212" fill="none" stroke="rgba(245,245,245,0.40)" stroke-width="1" stroke-dasharray="4,3"/>
+      <circle cx="328" cy="210" r="2.5" fill="#f5f5f5"/>
+
+      <!-- Legend strip -->
+      <line x1="40" y1="484" x2="1160" y2="484" stroke="rgba(245,245,245,0.12)" stroke-width="1"/>
+      <rect x="40" y="502" width="16" height="12" rx="2" fill="rgba(191,192,192,0.10)" stroke="#949eb2" stroke-width="1"/>
+      <text x="64" y="512" fill="#949eb2" font-size="11" font-family="'Geist Mono', monospace">input, mounted read-only</text>
+      <rect x="276" y="502" width="16" height="12" rx="2" fill="rgba(240,138,89,0.10)" stroke="#f08a59" stroke-width="1"/>
+      <text x="300" y="512" fill="#949eb2" font-size="11" font-family="'Geist Mono', monospace">focal: the partner and its output</text>
+      <rect x="560" y="502" width="16" height="12" rx="2" fill="#393e53" stroke="#f5f5f5" stroke-width="1"/>
+      <text x="584" y="512" fill="#949eb2" font-size="11" font-family="'Geist Mono', monospace">specialist agent · model · its skill</text>
+      <line x1="852" y1="508" x2="892" y2="508" stroke="#bfc0c0" stroke-width="1.2" marker-start="url(#dd-arrow)" marker-end="url(#dd-arrow)"/>
+      <text x="904" y="512" fill="#949eb2" font-size="11" font-family="'Geist Mono', monospace">brief out, report back</text>
+    </svg>
+    <footer><span>Playbooks are Skills: plain markdown in skills/, owned by each team</span><span>2 / 5</span></footer>
+    <aside class="note">We built a deal desk on Claude Managed Agents. A Senior Partner agent reads the RFP and briefs four specialists at once. Each has its own context and judges the RFP against the firm's rulebook for its lane: the pricing playbook, the legal checklist, the capability map, the battlecards. Those rulebooks are plain markdown files the business owns. Then the partner reads the four reports against each other and writes the proposal.</aside>
+  </section>
+
+  <!-- ───────────────────────── 3. Live ───────────────────────── -->
+  <section class="slide" data-time="0:50–1:10">
+    <p class="eyebrow">Live · uv run python run_deal_desk.py</p>
+    <h1>Four briefs go out <em>in the same second</em></h1>
+    <div class="live">
+      <div>
+        <div class="big">0.7 s</div>
+        <p class="big-cap">from the first brief to the fourth in the rehearsal. The four reports took 46 s of wall time for 148 s of specialist work, and none of them saw the others' work, so none anchors on another's answer.</p>
+        <p class="cue">→ Switch to the terminal</p>
+      </div>
+      <div class="watch">
+        <h2>Point at</h2>
+        <ul>
+          <li><code>[brief →]</code> four times, within a second</li>
+          <li><code>[fan-out]</code> the measured spread</li>
+          <li><code>[report ←]</code> and the fan-in line: wall time against work done</li>
+          <li>The Console trace URL: one thread per specialist, every tool call logged</li>
+        </ul>
+      </div>
+    </div>
+    <footer><span>Fallback: the rehearsal recording, or tests/offline_check.py at $0</span><span>3 / 5</span></footer>
+    <aside class="note">Here's the live run. Four briefs go out within a second, and the reports come back in 46 seconds of wall time for 148 seconds of work. None of the specialists sees the others' work, so nobody anchors on anybody. Every thread is traced in the Console, so you can audit why each one said what it said. (Leave the run going; come back for its cost line at the end, or say it's still working.)</aside>
+  </section>
+
+  <!-- ───────────────────────── 4. The seam ───────────────────────── -->
+  <section class="slide" data-time="1:10–1:35">
+    <p class="eyebrow">Why the cross-check matters · trap C5</p>
+    <h1>Each report is right alone. Together they reveal that <em>the exit cancels the discount</em></h1>
+    <svg viewBox="0 0 1200 400" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="deal-desk-seam-title deal-desk-seam-desc" style="margin-top:22px">
+      <title id="deal-desk-seam-title">The C5 seam: termination against the discount</title>
+      <desc id="deal-desk-seam-desc">The Pricing report caps the discount at 25% with a three-year commitment, the Legal report allows an exit at will, and the Senior Partner combines them into three priced options in the proposal.</desc>
+      <defs>
+        <marker id="seam-arrow" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#bfc0c0"/></marker>
+        <marker id="seam-arrow-accent" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#f08a59"/></marker>
+      </defs>
+      <rect width="100%" height="100%" fill="#2d3142"/>
+
+      <!-- Arrows first -->
+      <path d="M 376,100 H 408 Q 416,100 416,108 V 176 Q 416,184 424,184 H 455" fill="none" stroke="#bfc0c0" stroke-width="1.2" marker-end="url(#seam-arrow)"/>
+      <path d="M 376,300 H 408 Q 416,300 416,292 V 224 Q 416,216 424,216 H 455" fill="none" stroke="#bfc0c0" stroke-width="1.2" marker-end="url(#seam-arrow)"/>
+      <line x1="776" y1="200" x2="855" y2="200" stroke="#f08a59" stroke-width="1.4" marker-end="url(#seam-arrow-accent)"/>
+
+      <!-- Pricing report -->
+      <rect x="40" y="48" width="336" height="104" rx="6" fill="#2d3142"/>
+      <rect x="40" y="48" width="336" height="104" rx="6" fill="#393e53" stroke="#f5f5f5" stroke-width="1"/>
+      <rect x="52" y="58" width="116" height="16" rx="2" fill="transparent" stroke="rgba(245,245,245,0.40)" stroke-width="0.8"/>
+      <text x="110" y="70" fill="#949eb2" font-size="11" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">PRICING REPORT</text>
+      <text x="208" y="104" fill="#f5f5f5" font-size="16" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">Ceiling: 25% off</text>
+      <text x="208" y="124" fill="#bfc0c0" font-size="12" font-family="'Geist Mono', monospace" text-anchor="middle">only with 3 years committed</text>
+      <text x="208" y="140" fill="#949eb2" font-size="11" font-family="'Geist Mono', monospace" text-anchor="middle">pricing-playbook</text>
+
+      <!-- Legal report -->
+      <rect x="40" y="248" width="336" height="104" rx="6" fill="#2d3142"/>
+      <rect x="40" y="248" width="336" height="104" rx="6" fill="#393e53" stroke="#f5f5f5" stroke-width="1"/>
+      <rect x="52" y="258" width="100" height="16" rx="2" fill="transparent" stroke="rgba(245,245,245,0.40)" stroke-width="0.8"/>
+      <text x="102" y="270" fill="#949eb2" font-size="11" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">LEGAL REPORT</text>
+      <text x="208" y="304" fill="#f5f5f5" font-size="16" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">Exit at will is negotiable</text>
+      <text x="208" y="324" fill="#bfc0c0" font-size="12" font-family="'Geist Mono', monospace" text-anchor="middle">push the notice to 60+ days</text>
+      <text x="208" y="340" fill="#949eb2" font-size="11" font-family="'Geist Mono', monospace" text-anchor="middle">legal-checklist</text>
+
+      <!-- Focal: the partner's cross-check -->
+      <text x="616" y="124" fill="#f08a59" font-size="20" font-style="italic" font-family="'Instrument Serif', Georgia, serif" text-anchor="middle">visible only side by side</text>
+      <path d="M 616,130 V 146" fill="none" stroke="rgba(240,138,89,0.50)" stroke-width="1" stroke-dasharray="4,3"/>
+      <rect x="456" y="148" width="320" height="104" rx="6" fill="#2d3142"/>
+      <rect x="456" y="148" width="320" height="104" rx="6" fill="rgba(240,138,89,0.10)" stroke="#f08a59" stroke-width="1.2"/>
+      <rect x="468" y="158" width="116" height="16" rx="2" fill="transparent" stroke="rgba(240,138,89,0.60)" stroke-width="0.8"/>
+      <text x="526" y="170" fill="#f08a59" font-size="11" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">SENIOR PARTNER</text>
+      <text x="616" y="200" fill="#f5f5f5" font-size="16" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">The exit voids the discount</text>
+      <text x="616" y="220" fill="#bfc0c0" font-size="12" font-family="'Geist Mono', monospace" text-anchor="middle">a 30-day exit cancels the</text>
+      <text x="616" y="236" fill="#bfc0c0" font-size="12" font-family="'Geist Mono', monospace" text-anchor="middle">commitment that earns 25%</text>
+
+      <!-- Output: what went into the docx (rehearsal run 2) -->
+      <rect x="856" y="80" width="304" height="240" rx="6" fill="#2d3142"/>
+      <rect x="856" y="80" width="304" height="240" rx="6" fill="#393e53" stroke="#f5f5f5" stroke-width="1"/>
+      <rect x="868" y="90" width="92" height="16" rx="2" fill="transparent" stroke="rgba(245,245,245,0.40)" stroke-width="0.8"/>
+      <text x="914" y="102" fill="#949eb2" font-size="11" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">IN THE DOCX</text>
+      <text x="1008" y="140" fill="#f5f5f5" font-size="16" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">Discount follows commitment</text>
+      <line x1="876" y1="160" x2="1140" y2="160" stroke="rgba(245,245,245,0.12)" stroke-width="1"/>
+      <text x="880" y="188" fill="#f5f5f5" font-size="12" font-family="'Geist Mono', monospace">A</text>
+      <text x="900" y="188" fill="#bfc0c0" font-size="12" font-family="'Geist Mono', monospace">flexible term</text>
+      <text x="1068" y="188" fill="#f5f5f5" font-size="12" font-family="'Geist Mono', monospace" text-anchor="end">20%</text>
+      <text x="1136" y="188" fill="#f5f5f5" font-size="12" font-family="'Geist Mono', monospace" text-anchor="end">$2.93M</text>
+      <line x1="876" y1="204" x2="1140" y2="204" stroke="rgba(245,245,245,0.12)" stroke-width="1"/>
+      <text x="880" y="228" fill="#f5f5f5" font-size="12" font-family="'Geist Mono', monospace">B</text>
+      <text x="900" y="228" fill="#bfc0c0" font-size="12" font-family="'Geist Mono', monospace">3 years committed</text>
+      <text x="1068" y="228" fill="#f5f5f5" font-size="12" font-family="'Geist Mono', monospace" text-anchor="end">25%</text>
+      <text x="1136" y="228" fill="#f5f5f5" font-size="12" font-family="'Geist Mono', monospace" text-anchor="end">$2.75M</text>
+      <text x="900" y="248" fill="#949eb2" font-size="11" font-family="'Geist Mono', monospace">+ a reference; exit only</text>
+      <text x="900" y="264" fill="#949eb2" font-size="11" font-family="'Geist Mono', monospace">from the end of year 3</text>
+      <line x1="876" y1="280" x2="1140" y2="280" stroke="rgba(245,245,245,0.12)" stroke-width="1"/>
+      <text x="1008" y="304" fill="#949eb2" font-size="11" font-family="'Geist Mono', monospace" text-anchor="middle">five-year totals · fees fixed at signature</text>
+    </svg>
+    <p class="caption">Acme asked for 35% off <b>and</b> a free exit. Read one report at a time, both look acceptable. The partner tied the bigger discount to the commitment that justifies it, and let Acme choose.</p>
+    <footer><span>From rehearsal run 2's proposal-response.docx, commercial section</span><span>4 / 5</span></footer>
+    <aside class="note">This is why the cross-check matters. Pricing says 25% off is the ceiling, and only with a three-year commitment. Legal says an exit at will is negotiable. Each report is fine on its own. Read together, a 30-day exit cancels the commitment the discount pays for. The partner caught that: 20% off with flexibility, or 25% only for a committed three-year term. Acme chooses.</aside>
+  </section>
+
+  <!-- ───────────────────────── 5. Proof ───────────────────────── -->
+  <section class="slide" data-time="1:35–2:00">
+    <p class="eyebrow">Proof · demo/scorecard.py on the rehearsal docx</p>
+    <h1>It catches the traps, and you can change its rules <em>without code</em></h1>
+    <div class="stats">
+      <div class="stat focal"><div class="n">12 / 13</div><div class="l">traps in the Acme RFP handled, against an answer key written before the run</div></div>
+      <div class="stat"><div class="n">4 / 5</div><div class="l">of the traps that only show when two lanes compare notes</div></div>
+      <div class="stat"><div class="n">$1.11</div><div class="l">for the whole review, capped at $10</div></div>
+      <div class="stat"><div class="n">4.3 min</div><div class="l">from RFP to branded .docx</div></div>
+    </div>
+    <div class="own">
+      <p><b>The firm's knowledge is a file the business owns.</b> The pricing desk edits <span class="mono">pricing-playbook/SKILL.md</span>, <span class="mono">setup_swarm.py</span> uploads a new version, and the next deal follows the new rule.</p>
+      <p><b>Governed by design.</b> Specialists get read-only tools and inputs, every thread is traced, a $0 offline check gates every change, and nothing is sent until a human partner signs off.</p>
+    </div>
+    <p class="close">Your deal desk: a partner and four specialists working to your playbooks, in parallel, who read each other's notes.</p>
+    <p class="source">Rehearsal run 2, 4 Nov 2026, final demo swarm, session sesn_019zRXdTu6K1DS7fi2tWR3Vo, checked by hand. The one partial is C12: it positions inside Acme's Microsoft estate instead of naming Fabric.</p>
+    <footer><span>BTS-Synthetic Deal Desk</span><span>5 / 5</span></footer>
+    <aside class="note">We scored the rehearsal against 13 traps planted in the RFP. It handled 12, including 4 of the 5 that only show up when two lanes compare notes. That review cost $1.11 and took under five minutes. Nothing goes out without a human partner's sign-off. It's your deal desk: a partner and four specialists working to your playbooks, in parallel, who read each other's notes.</aside>
+  </section>
+
+</div></div>
+
+<div id="notes"></div>
+<div id="clock">0:00</div>
+
+<script>
+  // Arrows, Space or PageUp/PageDown to move. N: speaker notes. T: rehearsal clock (2:00 target). F: fullscreen.
+  const slides = [...document.querySelectorAll('.slide')];
+  const stage = document.getElementById('stage');
+  const notes = document.getElementById('notes');
+  const clock = document.getElementById('clock');
+  let i = Math.max(0, Math.min(slides.length - 1, (parseInt(location.hash.slice(1), 10) || 1) - 1));
+  let t0 = null, timer = null;
+
+  function fit() {
+    const s = Math.min(window.innerWidth / 1280, window.innerHeight / 720);
+    stage.style.transform = `scale(${s})`;
+  }
+  function show(n) {
+    i = Math.max(0, Math.min(slides.length - 1, n));
+    slides.forEach((el, k) => el.classList.toggle('active', k === i));
+    const note = slides[i].querySelector('aside.note');
+    notes.innerHTML = `<span class="t">${slides[i].dataset.time}</span>${note ? note.innerHTML : ''}`;
+    history.replaceState(null, '', '#' + (i + 1));
+  }
+  function tick() {
+    const s = Math.floor((Date.now() - t0) / 1000);
+    clock.textContent = `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')} / 2:00`;
+    clock.classList.toggle('over', s > 120);
+  }
+  document.addEventListener('keydown', (e) => {
+    if (['ArrowRight', 'ArrowDown', 'PageDown', ' '].includes(e.key)) { e.preventDefault(); show(i + 1); }
+    else if (['ArrowLeft', 'ArrowUp', 'PageUp'].includes(e.key)) { e.preventDefault(); show(i - 1); }
+    else if (e.key === 'Home') show(0);
+    else if (e.key === 'End') show(slides.length - 1);
+    else if (e.key === 'n' || e.key === 'N') notes.classList.toggle('on');
+    else if (e.key === 't' || e.key === 'T') {
+      if (timer) { clearInterval(timer); timer = null; clock.classList.remove('on'); }
+      else { t0 = Date.now(); tick(); timer = setInterval(tick, 250); clock.classList.add('on'); }
+    }
+    else if (e.key === 'f' || e.key === 'F') {
+      document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen();
+    }
+  });
+  document.addEventListener('click', (e) => { if (!e.target.closest('a')) show(e.clientX > window.innerWidth / 3 ? i + 1 : i - 1); });
+  window.addEventListener('resize', fit);
+  fit(); show(i);
+</script>
+</body>
+</html>
