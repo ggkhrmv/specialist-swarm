@@ -7,7 +7,9 @@ Step 4 — create the coordinator ("Senior Partner") that orchestrates the swarm
   when they apply.
 - Its roster is every specialist saved in .swarm_state.json (plus the Critic, if
   you've run stretch_critic_subagent.py).
-- It carries Anthropic's pre-built docx skill, so it can produce the Word document.
+- It carries Anthropic's pre-built docx skill, so it can produce the Word document,
+  plus the custom skills mapped to "coordinator" in SKILL_OWNERS
+  (create_specialists.py).
 - It uses the current multiagent type (multiagent_20261001). If your organisation
   doesn't have that type yet, it falls back to the older `coordinator` type.
 
@@ -23,6 +25,7 @@ import anthropic
 from common import (OUTPUTS_DIR, PROFILE, agent_metadata, agent_toolset, get_client,
                     load_prompt, load_state, model_for, multiagent_block, require, save_state,
                     upsert_agent)
+from create_specialists import skill_refs
 
 
 def build_system(roster_lines: list[str], workflows: bool, critic: bool) -> str:
@@ -55,7 +58,8 @@ def main() -> None:
         description="Runs a Deal Desk: briefs the specialists, synthesises, delivers the docx.",
         model=model_for("coordinator"),
         tools=agent_toolset(),  # bash + file tools, to build the docx; no web
-        skills=[{"type": "anthropic", "skill_id": "docx"}],
+        skills=[{"type": "anthropic", "skill_id": "docx"},
+                *skill_refs("coordinator", state.get("skills", {}))],
         metadata=agent_metadata("coordinator"),
     )
 

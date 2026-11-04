@@ -131,7 +131,7 @@ specialist-swarm/
 
 ## Asset-forge skill suite
 
-`skills/` also carries a general-purpose suite for building consulting assets (proposals, RfP/RfQ responses, pitch decks, readouts, presentation sites, capability maps). These are standard Agent Skills (`SKILL.md` + `references/` + `evals/`). Copy them into `~/.claude/skills/` for Claude Code, or upload them with the Skills API the same way `upload_skills.py` does. `upload_skills.py` only uploads the four Deal Desk skills mapped to agents in `SKILL_OWNERS` (`create_specialists.py`), so these don't change the core build.
+`skills/` also carries a general-purpose suite for building consulting assets (proposals, RfP/RfQ responses, pitch decks, readouts, presentation sites, capability maps). These are standard Agent Skills (`SKILL.md` + `references/` + `evals/`). Copy them into `~/.claude/skills/` for Claude Code, or upload them with the Skills API the same way `upload_skills.py` does. `upload_skills.py` uploads only the skills mapped to agents in `SKILL_OWNERS` (`create_specialists.py`). From this suite those are `positioning` (coordinator, Technical Fit, Competitive Intel), `storyline` and `voice` (coordinator) and `asset-review` (Critic). The orchestrator, `asset-forge`, stays local because its gates wait for a human.
 
 | Skill | What it does |
 |---|---|

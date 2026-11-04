@@ -11,12 +11,12 @@ Agents** (multiagent sessions + Skills). Cards B and C in `scenario-cards.md` ar
 
 | Agent | Prompt | Skill | Model (demo / dev) |
 | --- | --- | --- | --- |
-| Deal Desk Senior Partner (coordinator) | `prompts/coordinator.md` | Anthropic `docx` | Opus 5.5 / Sonnet 5.5 |
+| Deal Desk Senior Partner (coordinator) | `prompts/coordinator.md` | Anthropic `docx` + `positioning`, `storyline`, `voice` | Opus 5.5 / Sonnet 5.5 |
 | Pricing Specialist | `prompts/pricing.md` | `pricing-playbook` (+ mounted `past-wins.json`) | Sonnet 5.5 / Haiku 5.5 |
 | Legal Reviewer | `prompts/legal.md` | `legal-checklist` | Sonnet 5.5 / Haiku 5.5 |
-| Technical Fit Specialist | `prompts/technical_fit.md` | `product-overview` | Sonnet 5.5 / Haiku 5.5 |
-| Competitive Intel Analyst | `prompts/competitive.md` | `competitive-intel` | Haiku 5.5 / Haiku 5.5 |
-| Deal Desk Critic (stretch S2, optional) | `prompts/critic.md` | none | Opus 5.5 / Sonnet 5.5 |
+| Technical Fit Specialist | `prompts/technical_fit.md` | `product-overview` + `positioning` | Sonnet 5.5 / Haiku 5.5 |
+| Competitive Intel Analyst | `prompts/competitive.md` | `competitive-intel` + `positioning` | Haiku 5.5 / Haiku 5.5 |
+| Deal Desk Critic (stretch S2, optional) | `prompts/critic.md` | `asset-review` | Opus 5.5 / Sonnet 5.5 |
 
 ## Commands
 
@@ -51,9 +51,11 @@ There is no linter or unit-test suite; `tests/offline_check.py` is the gate.
   The coordinator decides whom to brief from those lines, so keep the descriptions accurate. `{{workflows}}` and
   `{{critic}}` pull in `coordinator.workflows.md` and `coordinator.critic.md` when they apply.
 - **Skills:** only the skills mapped in `SKILL_OWNERS` (`create_specialists.py`) are uploaded, once per checkout, and
-  attached to their specialist. A changed skill gets a new version, and agents reference `"latest"`. The rest of
-  `skills/` is the team's asset-forge suite (see README): a library for Claude Code, not part of the swarm until
-  someone maps one of its skills to an agent.
+  attached to every agent listed for them (specialist keys, `coordinator`, `critic`). A changed skill gets a new
+  version, and agents reference `"latest"`. Four of the asset-forge suite skills are mapped (`positioning`,
+  `storyline`, `voice`, `asset-review`). The rest stay a library for Claude Code: `asset-forge` waits for human
+  sign-offs at its gates, and the others don't apply to a docx deliverable. Skill descriptions must be ≤ 1024
+  characters to upload.
 - **Runtime data flow:** the RFP and `past-wins.json` are uploaded once (cached by content hash) and mounted read-only
   at `/mnt/session/uploads/inputs/`. All threads share that container's filesystem but **not** conversation history,
   so every brief must carry file paths. The deliverable must be written to `/mnt/session/outputs/`, the only directory
