@@ -26,7 +26,10 @@ def main() -> None:
             "type": "cloud",
             # No open internet: the agents only read mounted files and build a docx.
             # Package managers stay reachable in case the docx skill installs a library.
-            "networking": {"type": "limited", "allow_package_managers": True},
+            # allow_mcp_servers lets the container reach only the MCP endpoints configured
+            # on an agent (the CRM MCP, S5); without it a session using one is rejected.
+            "networking": {"type": "limited", "allow_package_managers": True,
+                           "allow_mcp_servers": True},
         },
     )
     state["environment_id"] = environment.id

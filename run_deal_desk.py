@@ -86,11 +86,17 @@ def kickoff_message(rfp: Path = RFP, memory: bool = False) -> str:
     memory_line = ("Your deal memory is attached (see the memory section of your "
                    "instructions): read it before you brief, and update it once the docx "
                    "is saved.\n\n") if memory else ""
+    if os.environ.get("MCP_CRM_URL", "").strip():  # CRM MCP (S5) is attached to Pricing
+        past_wins_line = ("the Pricing Specialist queries the CRM through its MCP tools "
+                          "(search_past_wins, get_deal, pricing_stats); "
+                          f"{INPUTS_DIR}/{PAST_WINS.name} is only the fallback if the CRM fails")
+    else:
+        past_wins_line = f"{INPUTS_DIR}/{PAST_WINS.name}"
     return (
         "An RFP has just landed. Run the standard Deal Desk process.\n\n"
         "Files (read-only; every specialist can read these paths too):\n"
         f"- RFP: {INPUTS_DIR}/{rfp.name}\n"
-        f"- Past wins, for Pricing: {INPUTS_DIR}/{PAST_WINS.name}\n\n"
+        f"- Past wins, for Pricing: {past_wins_line}\n\n"
         f"{memory_line}"
         f"Deliverable: {OUTPUTS_DIR}/proposal-response.docx\n"
         "Move fast: the RFP deadline is real."
