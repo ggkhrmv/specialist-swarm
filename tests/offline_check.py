@@ -170,6 +170,12 @@ class FakeClient:
                 fake.calls.append(("environments.create", kw))
                 return Obj(id="env_1")
 
+            def update(self, environment_id, **kw):
+                validate(Environments.update, {"environment_id": environment_id, **kw},
+                         "environments.update")
+                fake.calls.append(("environments.update", kw))
+                return Obj(id=environment_id)
+
         class _Versions:
             def create(self, skill_id, **kw):
                 validate(Versions.create, {"skill_id": skill_id, **kw}, "skills.versions.create")

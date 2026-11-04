@@ -68,7 +68,9 @@ def kickoff_message() -> str:
         "An RFP has just landed. Run the standard Deal Desk process.\n\n"
         "Files (read-only; every specialist can read these paths too):\n"
         f"- RFP: {INPUTS_DIR}/{RFP.name}\n"
-        f"- Past wins, for Pricing: {INPUTS_DIR}/past-wins.json\n\n"
+        f"- Past wins, for Pricing: {INPUTS_DIR}/past-wins.json"
+        + (" (fallback only: Pricing must query the CRM MCP first)" if common.crm_url() else "")
+        + "\n\n"
         f"Deliverable: {OUTPUTS_DIR}/proposal-response.docx\n"
         "Move fast: the RFP deadline is real."
     )
@@ -146,6 +148,27 @@ def stream_session(client, session_id: str, transcript: list[str]) -> str:
     return "stream closed"
 
 
+def print_thread_tools(client, session_id: str) -> None:
+    """After the run: what each specialist thread called (the live stream only shows the
+    coordinator). MCP calls are marked so you can see the CRM being queried."""
+    threads = getattr(client.beta.sessions, "threads", None)
+    if threads is None:
+        return
+    print("\nSPECIALIST TOOL CALLS")
+    try:
+        for thread in threads.list(session_id).data:
+            name = getattr(getattr(thread, "agent", None), "name", None) or thread.id
+            calls = []
+            for e in threads.events.list(thread.id, session_id=session_id):
+                if e.type == "agent.mcp_tool_use":
+                    calls.append(f"MCP {getattr(e, 'mcp_server_name', '?')}:{e.name}")
+                elif e.type == "agent.tool_use":
+                    calls.append(e.name)
+            print(f"  {name:28s} {', '.join(calls) or '-'}")
+    except Exception as exc:  # display only: never fail a finished run over it
+        print(f"  (could not read thread events: {exc})")
+
+
 def print_history(history: list[dict], last: int = 5) -> None:
     print(f"\nRUN HISTORY (this checkout, last {min(last, len(history))} of {len(history)})")
     print(f"  {'when (UTC)':16s} {'profile':7s} {'outcome':16s} {'cost':>7s} {'time':>6s}  docx")
@@ -211,6 +234,8 @@ def main() -> None:
     if not files:
         print("  No files found. Open the trace above to see what the coordinator did, or "
               "retry later with: uv run python download_deliverable.py")
+
+    print_thread_tools(client, session.id)
 
     usage = client.beta.sessions.retrieve(session.id).usage
     cost = int(usage.list_cost.amount) / 100 if usage and usage.list_cost else None
