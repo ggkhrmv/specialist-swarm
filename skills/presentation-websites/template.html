@@ -1,0 +1,798 @@
+<!DOCTYPE html>
+<!--
+  PRESENTATION WEBSITE: self-contained, brand-agnostic starter template.
+  This file supplies structure, components, interactions and accessibility. YOU supply the brand:
+  every slot marked  BRAND:  (CSS) or  LOGO SLOT  (markup) is where the brand kit goes (see brand-kit.md).
+  Structure it like a WEBSITE, not a slide deck. Sections in whatever order the story needs.
+
+  TO SHIP (one file, zero network requests):
+  1. Fill the BRAND: tokens in :root and paste the real logo SVGs into the LOGO SLOTs.
+  2. Edit the copy, then add, remove or reorder <section> blocks. Keep the tokens.
+  3. Put any image next to this file in ./assets and reference it as  src = asset:name.jpg  (see interactions.md).
+  4. Run:  python3 embed-fonts.py thisfile.html
+     It embeds the brand font and every asset: image as base64, then checks for external refs.
+  Until step 4 the page renders the fallback font. Logos and icons are inline SVG.
+  The values below are NEUTRAL PLACEHOLDERS, not a brand. Never ship them as if they were one.
+-->
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Supplier onboarding pilot</title>
+<style>
+/*__FONT_FACES__*/
+/* ^ embed-fonts.py replaces this marker with base64 @font-face rules. Do not paste base64 by hand. */
+
+/* ============================================================================
+   DESIGN TOKENS. Every colour, size, space, border, radius, layer and duration lives here.
+   Components reference tokens by name; never write a raw value in a component rule.
+   Lines marked BRAND: are the slots the brand kit fills. Everything else derives from them.
+   ============================================================================ */
+:root{
+  /* BRAND: primary ramp, light tint (100) to deepest shade (500). 300 = the signature colour. PLACEHOLDER VALUES. */
+  --color-brand-100:#E4ECF6; --color-brand-200:#A9C0E0; --color-brand-300:#2E5C9E; --color-brand-400:#22477D; --color-brand-500:#142C50;
+  /* BRAND: neutrals, white to black. Warm or cool to match the brand. 300 is for non-text UI only. */
+  --color-white:#FFFFFF; --color-neutral-100:#F2F2F0; --color-neutral-200:#D0D0CC; --color-neutral-300:#8A8A86;
+  --color-neutral-400:#56564F; --color-neutral-500:#22221F; --color-black:#000000;
+  /* BRAND: up to three accent colours, for data visualisation only (under 5% of a layout) */
+  --color-accent-1:#C2502E; --color-accent-2:#2E8C7A; --color-accent-3:#B58A1B;
+  /* Status ramps (100 background, 300 fill, 400 text/border). Keep unless the brand defines its own. */
+  --color-success-100:#E5FAF0; --color-success-300:#167C61; --color-success-400:#065F46;
+  --color-warning-100:#FEF2C4; --color-warning-300:#C16B02; --color-warning-400:#AC511A;
+  --color-critical-100:#FFE2E2; --color-critical-300:#D50C0C; --color-critical-400:#991B1B;
+  --color-info-100:#C8E0FF; --color-info-300:#2457D6; --color-info-400:#1D1B99;
+
+  /* Semantic layer (light). Components use these, not the primitives above. */
+  --global-text-body-color-primary:var(--color-black);
+  --global-text-body-color-secondary:var(--color-neutral-500);
+  --global-text-body-color-tertiary:var(--color-neutral-400);   /* minimum for readable text; never neutral-300 */
+  --global-text-body-color-inverse:var(--color-white);
+  --global-text-headline-color-primary:var(--color-black);
+  --global-text-headline-color-inverse:var(--color-white);
+  --global-background-primary:var(--color-white);
+  --global-background-secondary:var(--color-neutral-100);
+  --global-surface-color-100:var(--color-neutral-100);
+  --global-border-color-200:var(--color-neutral-200);
+  --global-border-color-focus:var(--color-brand-300);
+  --global-actioncolor-primary-rested:var(--color-brand-300);
+  --global-actioncolor-primary-hover:var(--color-brand-400);
+  --color-link:var(--color-brand-400);                          /* BRAND: text-link colour, if the brand specifies one */
+
+  /* Data visualisation: categorical order, never reordered or skipped. Derived from the brand; validate with dataviz. */
+  --dv-cat-1:var(--color-brand-300); --dv-cat-2:var(--color-neutral-300); --dv-cat-3:var(--color-accent-1); --dv-cat-4:var(--color-brand-200);
+  --dv-cat-5:var(--color-black); --dv-cat-6:var(--color-accent-2); --dv-cat-7:var(--color-neutral-200);
+  --dv-bar-primary:var(--color-brand-300); --dv-bar-outline:var(--color-neutral-500);   /* every bar gets a 1px outline */
+
+  /* BRAND: type. The real brand font first, then ONE named fallback family. Must equal FONT_FAMILY in embed-fonts.py. */
+  --font-brand:"Brand Sans",Arial,sans-serif;
+  --font-display:var(--font-brand);                              /* BRAND: optional display/serif face for pull-quotes */
+  --font-weight-light:300; --font-weight-regular:400; --font-weight-strong:600;   /* BRAND: only weights you embed */
+  --tracking-heading:-0.02em; --tracking-body:0;                 /* BRAND: tighten for geometric sans faces */
+  /* Type scale (desktop; mobile overrides below). A documented scale, never clamp() with magic numbers. */
+  --fs-display:80px; --fs-h1:64px; --fs-h2:48px; --fs-h3:28px; --fs-h4:24px;
+
+  /* Spacing (4px base) */
+  --space-1:4px; --space-2:8px; --space-3:12px; --space-4:16px; --space-5:20px; --space-6:24px; --space-7:28px;
+  --space-8:32px; --space-10:40px; --space-12:48px; --space-14:56px; --space-16:64px; --space-20:80px; --space-24:96px;
+
+  /* Borders, corners, elevation, layers, motion */
+  --border-xs:1px; --border-sm:2px; --border-md:4px;
+  --corner:0;                                                    /* BRAND: one corner policy for the whole page. 0 = square */
+  --shadow-md:0 4px 8px 3px rgba(0,0,0,.15),0 1px 3px 0 rgba(0,0,0,.30);   /* floating UI only, never cards */
+  --z-base:0; --z-raised:10; --z-nav:100; --z-dropdown:200; --z-sticky:300; --z-scrim:400; --z-modal:500; --z-toast:600; --z-tooltip:700;
+  --duration-fast:150ms; --duration-moderate:300ms; --duration-slow:700ms;
+  --easing-standard:cubic-bezier(0,0,.58,1); --easing-slow:cubic-bezier(.77,0,.18,1);
+
+  /* Layout */
+  --maxw:1280px; --pad:40px; --header-h:72px;
+}
+@media(max-width:1279px){ :root{ --pad:24px; } }
+@media(max-width:719px){ :root{ --pad:16px; --header-h:56px; --fs-display:40px; --fs-h1:36px; --fs-h2:28px; --fs-h3:20px; --fs-h4:20px; } }
+
+/* ============================================================================ BASE */
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth;scroll-padding-top:calc(var(--header-h) + var(--space-4))}
+body{font-family:var(--font-brand);font-weight:var(--font-weight-regular);color:var(--global-text-body-color-primary);
+  background:var(--global-background-primary);font-size:16px;line-height:24px;letter-spacing:var(--tracking-body);
+  -webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale}
+p,h1,h2,h3,h4,li,figcaption{text-wrap:pretty}
+strong,b{font-weight:var(--font-weight-strong)}
+::selection{background:var(--color-brand-400);color:var(--color-white)}
+a{color:var(--text-link-color);text-decoration:underline;text-decoration-color:transparent;text-decoration-thickness:var(--border-sm);text-underline-offset:4px;
+  transition:color var(--duration-fast) var(--easing-standard),text-decoration-color var(--duration-fast) var(--easing-standard)}
+a:hover{color:var(--color-neutral-500);text-decoration-color:var(--color-brand-300)}
+.btn,.nav a{text-decoration:none}
+:focus-visible{outline:var(--border-sm) solid var(--global-border-color-focus);outline-offset:2px}
+.on-dark :focus-visible,.cta :focus-visible,.hero :focus-visible{outline-color:var(--color-white)}
+svg{display:block}
+.wrap{max-width:var(--maxw);margin:0 auto;padding-left:var(--pad);padding-right:var(--pad)}
+section{padding:var(--space-20) 0}
+@media(max-width:719px){ section{padding:var(--space-14) 0} }
+.divide{border-top:var(--border-xs) solid var(--global-border-color-200)}
+.band{background:var(--global-background-secondary)}
+.skip{position:absolute;left:var(--space-4);top:-100px;z-index:var(--z-toast);background:var(--color-white);padding:var(--space-2) var(--space-4)}
+.skip:focus{top:var(--space-4)}
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
+
+/* TYPE SCALE: fixed steps from :root (--fs-*), switched at 720px. Headings strong weight, sentence case, no trailing period. */
+.display,.h1,.h2,.h3,.h4{font-weight:var(--font-weight-strong);letter-spacing:var(--tracking-heading);line-height:1.1;color:var(--global-text-headline-color-primary);text-wrap:balance;overflow-wrap:anywhere;min-width:0}
+.display{font-size:var(--fs-display)} .h1{font-size:var(--fs-h1)} .h2{font-size:var(--fs-h2)} .h3{font-size:var(--fs-h3)} .h4{font-size:var(--fs-h4)}
+.lead{font-size:22px;line-height:32px;color:var(--global-text-body-color-tertiary)}
+.body{font-size:18px;line-height:24px;color:var(--global-text-body-color-tertiary)}
+.small{font-size:14px;line-height:20px;color:var(--global-text-body-color-tertiary)}
+@media(max-width:719px){ .lead{font-size:18px;line-height:24px} }
+.measure{max-width:62ch}
+.stack-12>*+*{margin-top:var(--space-3)} .stack-16>*+*{margin-top:var(--space-4)}
+.stack-24>*+*{margin-top:var(--space-6)} .stack-40>*+*{margin-top:var(--space-10)}
+
+/* EYEBROW: OPT-IN ONLY (max one per page). Sentence case, neutral, 14px strong. Never brand-coloured, never uppercase. */
+.eyebrow{font-size:14px;line-height:20px;font-weight:var(--font-weight-strong);letter-spacing:0.05em;color:var(--global-text-body-color-tertiary)}
+/* META LINE: the default way to give context above a page title */
+.meta-line{display:flex;align-items:center;gap:var(--space-4);font-size:14px;line-height:20px;color:var(--global-text-body-color-tertiary)}
+.meta-line i{width:4px;height:4px;background:var(--color-neutral-300);display:inline-block}
+
+/* SECTION HEAD: split = headline left, lead right. Alternate it with a plain stacked head. */
+.head-split{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:var(--space-16);align-items:end;margin-bottom:var(--space-12)}
+.head-split .lead{margin:0}
+@media(max-width:899px){ .head-split{grid-template-columns:1fr;gap:var(--space-4);margin-bottom:var(--space-8)} }
+
+/* LOGOS: the brand's exact artwork, inline SVG (LOGO SLOTs in the markup). Use currentColor where the artwork allows
+   so it flips on dark surfaces. BRAND: set the height to the brand's minimum size rule. */
+.logo{height:28px;width:auto;color:var(--color-black)} .logo.on-dark{color:var(--color-white)}
+.logo-mark{height:32px;width:auto;color:var(--color-black)}
+
+/* ICONS: inline sprite, fill=currentColor. Sizes 16/20/24/32/40. Default set: Material Symbols Outlined (Apache-2.0).
+   BRAND: if the brand has its own icon set, replace the sprite paths and keep the ids. */
+.icon{display:inline-block;width:24px;height:24px;fill:currentColor;flex:none}
+.icon-20{width:20px;height:20px} .icon-32{width:32px;height:32px} .icon-40{width:40px;height:40px}
+
+/* ============================================================================ HEADER  */
+.site-header{position:sticky;top:0;z-index:var(--z-nav);background:var(--color-white);border-bottom:var(--border-xs) solid var(--global-border-color-200)}
+.site-header .wrap{display:flex;align-items:center;gap:var(--space-8);height:var(--header-h)}
+/* Optional partner/client co-brand lockup. Needs the partner's written approval. Follow both brands' clear-space rules. */
+.cobrand{display:flex;align-items:center;gap:calc(6 * 12px)}
+.cobrand__sep{width:1px;height:32px;background:var(--color-neutral-200)}
+.cobrand__client{height:25px;width:auto}
+.nav{margin-left:auto;display:flex;align-items:stretch;height:100%}
+.nav a{position:relative;display:flex;align-items:center;min-width:80px;justify-content:center;padding:0 var(--space-4);
+  font-size:14px;line-height:20px;color:var(--color-black);background:none;white-space:nowrap}
+.nav a::after{content:"";position:absolute;left:var(--space-4);right:var(--space-4);bottom:0;height:var(--border-sm);background:var(--color-brand-300);
+  transform:scaleX(0);transform-origin:left;transition:transform var(--duration-fast) var(--easing-standard)}
+.nav a:hover::after,.nav a.active::after{transform:scaleX(1)}
+@media(max-width:1023px){ .nav{display:none} }
+
+/* ============================================================================ INTRO BAND (default page-top) */
+.intro{padding-top:var(--space-24);padding-bottom:var(--space-20)}
+.intro .h1{margin:var(--space-6) 0}
+.intro-meta{display:flex;flex-wrap:wrap;gap:var(--space-10);margin-top:var(--space-12);padding-top:var(--space-8);border-top:var(--border-xs) solid var(--global-border-color-200)}
+.intro-meta .k{font-size:14px;line-height:20px;color:var(--global-text-body-color-tertiary)}
+.intro-meta .v{font-size:20px;line-height:24px;font-weight:var(--font-weight-strong);margin-top:var(--space-1)}
+
+/* HERO (OPTIONAL cover). Radial gradient built from brand tokens, white text. If the brand ships an official
+   gradient or texture image, inline it instead: point a background-image at asset:gradient.png
+   (embed-fonts.py inlines it). Never layer it with a CSS gradient on the same element. */
+.hero{color:var(--color-white);background:radial-gradient(ellipse at 70% 25%,var(--color-brand-300) 0%,var(--color-brand-400) 40%,var(--color-brand-500) 75%);background-color:var(--color-brand-500)}
+.hero .wrap{padding-top:var(--space-24);padding-bottom:var(--space-24)}
+.hero .h1,.hero .display{color:var(--global-text-headline-color-inverse)} .hero .lead{color:var(--global-text-body-color-inverse);max-width:560px}
+
+/* ============================================================================ BUTTONS 
+   Fixed heights LG 64 / MD 48 / SM 32, 24px side padding, label 400, 1px borders, square.
+   Hover = label underline growing left to right. One Brand Primary per view. Order: ghost, tertiary, primary. */
+.btn{position:relative;display:inline-flex;align-items:center;gap:var(--space-2);height:48px;padding:0 var(--space-6);font:var(--font-weight-regular) 16px/1 var(--font-brand);
+  letter-spacing:var(--tracking-body);border:var(--border-xs) solid transparent;border-radius:var(--corner);cursor:pointer;background:none;white-space:nowrap;touch-action:manipulation;
+  transition:background-color var(--duration-fast) var(--easing-standard),border-color var(--duration-fast) var(--easing-standard),color var(--duration-fast) var(--easing-standard)}
+.btn .lbl{position:relative}
+.btn .lbl::after{content:"";position:absolute;left:0;right:0;bottom:-4px;height:1px;background:currentColor;transform:scaleX(0);transform-origin:left;transition:transform var(--duration-fast) var(--easing-standard)}
+.btn:hover .lbl::after{transform:scaleX(1)}
+.btn-lg{height:64px;font-size:18px} .btn-sm{height:32px;font-size:14px}
+.btn-primary{background:var(--color-brand-300);color:var(--color-white)} .btn-primary:active{background:var(--color-brand-400)}
+.btn-secondary{background:var(--color-black);color:var(--color-white)} .btn-secondary:hover{background:var(--color-neutral-500)} .btn-secondary:active{background:var(--color-brand-400)}
+.btn-tertiary{border-color:var(--color-black);color:var(--color-brand-300)} .btn-tertiary:hover{border-color:var(--color-brand-400);color:var(--color-brand-400)} .btn-tertiary:active{background:var(--color-brand-400);color:var(--color-white)}
+.btn-ghost{color:var(--color-brand-300)} .btn-ghost:hover{color:var(--color-brand-400)}
+/* Inverse: only on gradient, brand or black surfaces. Primary CTA there = Inverse Secondary (white fill, black text). */
+.btn-inv-secondary{background:var(--color-white);color:var(--color-black)} .btn-inv-secondary:hover{background:var(--color-neutral-100)} .btn-inv-secondary:active{background:var(--color-neutral-200)}
+.btn-inv-tertiary{border-color:var(--color-neutral-400);color:var(--color-white)} .btn-inv-tertiary:hover{border-color:var(--color-brand-400)} .btn-inv-tertiary:active{background:var(--color-brand-400)}
+.btn[aria-disabled="true"],.btn:disabled{background:var(--color-neutral-200);border-color:transparent;color:var(--color-neutral-400);cursor:default}
+.btn[aria-disabled="true"] .lbl::after{display:none}
+.btn-row{display:flex;gap:var(--space-2);flex-wrap:wrap}
+
+/* ============================================================================ TWO-COLUMN + FEATURE LIST */
+.cols{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.4fr);gap:var(--space-16)}
+@media(max-width:899px){ .cols{grid-template-columns:1fr;gap:var(--space-8)} }
+.feature-list{list-style:none}
+.feature-list li{display:flex;gap:var(--space-4);padding:var(--space-4) 0;border-bottom:var(--border-xs) solid var(--global-border-color-200)}
+.feature-list li:first-child{border-top:var(--border-xs) solid var(--global-border-color-200)}
+.feature-list .icon{color:var(--color-brand-300)}
+
+/* ============================================================================ HEADLINE NUMBERS
+   Editorial figures set on the heading scale (--fs-h1, black). For a dense dashboard tile use a smaller figure
+   (--fs-h3) with a 14px label. One figure may be the Inverse tile: black fill, white text, once per group. */
+.stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:var(--space-6)}
+.stat{border-radius:var(--corner);background:var(--global-surface-color-100);padding:var(--space-8)}
+.stat .num{font-size:64px;line-height:1.1;font-weight:var(--font-weight-strong);letter-spacing:var(--tracking-heading);font-variant-numeric:tabular-nums}
+.stat h3{font-size:18px;line-height:24px;font-weight:var(--font-weight-strong);letter-spacing:var(--tracking-body);margin-top:var(--space-4)}
+.stat .small{margin-top:var(--space-1)}
+.stat--inverse{background:var(--color-black);color:var(--global-text-body-color-inverse)}
+.stat--inverse .small{color:var(--global-text-body-color-inverse)}
+@media(max-width:719px){ .stat .num{font-size:36px} }
+
+/* INSIGHT CALLOUT : 4px left border, sparkle icon, 1-2 sentences */
+.insight{display:flex;gap:var(--space-3);align-items:flex-start;margin-top:var(--space-8);padding:var(--space-4) var(--space-6);border-left:var(--border-md) solid var(--color-brand-300);background:var(--global-surface-color-100);max-width:78ch}
+.insight .icon{color:var(--color-brand-300);margin-top:2px}
+
+/* ============================================================================ DEMO STAGE (light). Sequenced demos ([data-seq], interactions.md)
+   Light-first, so the stage is a light band. Items "light up": a state change on colour and border,
+   never an opacity fade, so the final state is always readable. */
+.stagebar{display:flex;justify-content:space-between;align-items:center;gap:var(--space-4);flex-wrap:wrap;margin-bottom:var(--space-6)}
+.stagebar__ctl{display:flex;gap:var(--space-2);flex-wrap:wrap}
+.lanes{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,1fr);gap:var(--space-6)}
+.lane{border-radius:var(--corner);background:var(--color-white);border:var(--border-xs) solid var(--global-border-color-200);padding:var(--space-6) var(--space-8)}
+.lane__head{display:flex;justify-content:space-between;align-items:baseline;gap:var(--space-4);margin-bottom:var(--space-4)}
+.lane__head h3{font-size:18px;line-height:24px;font-weight:var(--font-weight-strong)}
+.lane__n{font-size:48px;line-height:1.1;font-weight:var(--font-weight-strong);letter-spacing:var(--tracking-heading);font-variant-numeric:tabular-nums}
+.lane__n small{font-size:14px;font-weight:var(--font-weight-regular);letter-spacing:0;color:var(--global-text-body-color-tertiary);margin-left:6px}
+.lane--after .lane__n{color:var(--color-brand-300)}       /* the one brand highlight */
+.lane ol{list-style:none;display:grid;gap:var(--space-2)}
+.seq-item{display:flex;justify-content:space-between;gap:var(--space-4);padding:var(--space-3) var(--space-4);border-left:var(--border-md) solid var(--color-neutral-200);
+  background:var(--global-background-secondary);color:var(--color-neutral-200);font-size:16px;
+  transition:color var(--duration-moderate) var(--easing-standard),border-color var(--duration-moderate) var(--easing-standard)}
+.seq-item b{font-weight:var(--font-weight-regular);white-space:nowrap}
+.seq-item.is-on{color:var(--global-text-body-color-primary);border-left-color:var(--color-brand-300)}
+.seq-item.is-on b{color:var(--global-text-body-color-tertiary)}
+html:not(.js) .seq-item{color:var(--global-text-body-color-primary);border-left-color:var(--color-brand-300)}
+@media(max-width:719px){ .lanes{grid-template-columns:1fr} .lane{padding:var(--space-4)} .lane__n{font-size:36px} }
+
+/* ============================================================================ PANELS (before / after) */
+.panels{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:var(--space-6)}
+@media(max-width:719px){ .panels{grid-template-columns:1fr} }
+.panel{border-radius:var(--corner);background:var(--global-surface-color-100);padding:var(--space-10)}
+.panel .label{font-size:14px;line-height:20px;font-weight:var(--font-weight-strong);margin-bottom:var(--space-4)}
+.panel.is-after{background:var(--color-black);color:var(--global-text-body-color-inverse)}   /* Inverse tile */
+.panel.is-after .body{color:var(--global-text-body-color-inverse)}
+
+/* ============================================================================ STEPPER / TABS 
+   Labels neutral-400, black when selected, regular weight. 2px brand underline. Corners follow --corner. */
+.steptabs{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));border-bottom:var(--border-xs) solid var(--global-border-color-200)}
+.steptab{position:relative;background:none;border:0;text-align:left;padding:var(--space-4) var(--space-6) var(--space-4) 0;cursor:pointer;font-family:var(--font-brand);
+  color:var(--global-text-body-color-tertiary);transition:color var(--duration-fast) var(--easing-standard)}
+.steptab b{display:block;font-size:24px;line-height:1.1;font-weight:var(--font-weight-strong);letter-spacing:var(--tracking-heading);margin-bottom:var(--space-1)}
+.steptab span{font-size:16px;line-height:24px;font-weight:var(--font-weight-regular)}
+.steptab::after{content:"";position:absolute;left:0;right:var(--space-6);bottom:-1px;height:var(--border-sm);background:var(--color-brand-300);
+  transform:scaleX(0);transform-origin:left;transition:transform var(--duration-fast) var(--easing-standard)}
+.steptab:hover{color:var(--color-black)}
+.steptab[aria-selected="true"]{color:var(--color-black)} .steptab[aria-selected="true"]::after{transform:scaleX(1)}
+.steptab.is-done b{color:var(--color-brand-300)}
+.steppanel{padding-top:var(--space-8)} .steppanel[hidden]{display:none}
+.steppanel.is-in{animation:pw-in var(--duration-moderate) var(--easing-standard)}
+@keyframes pw-in{from{transform:translateY(8px)}to{transform:none}}       /* transform only, no opacity */
+.stepnav{display:flex;justify-content:space-between;margin-top:var(--space-6)}
+@media(max-width:719px){ .steptab span:not(.sr-only){position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap} }
+
+/* ============================================================================ CARDS 
+   Neutral-100 background, 32px padding, 4px brand accent bar at the BOTTOM on hover/focus. No shadow. */
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:var(--space-6)}
+.card{position:relative;background:var(--global-surface-color-100);padding:var(--space-8);border-radius:var(--corner)}
+.card::after{content:"";position:absolute;left:0;right:0;bottom:0;height:var(--border-md);background:var(--color-brand-300);
+  transform:scaleY(0);transform-origin:bottom;transition:transform var(--duration-fast) var(--easing-standard)}
+.card:hover::after,.card:focus-within::after{transform:scaleY(1)}
+.card .icon{color:var(--color-brand-300);margin-bottom:var(--space-6)}
+.card .h4{margin-bottom:var(--space-2)}
+
+/* TAGS: non-interactive labels, sentence case, corners follow --corner */
+.tag{border-radius:var(--corner);display:inline-flex;align-items:center;height:24px;padding:0 var(--space-2);font-size:12px;line-height:16px;background:var(--color-neutral-100);color:var(--color-black)}
+.tag--brand{background:var(--color-brand-100)}
+.tags{display:flex;gap:var(--space-2);flex-wrap:wrap;margin-top:var(--space-4)}
+
+/* ============================================================================ QUIZ ([data-quiz]) */
+.quiz{border-radius:var(--corner);background:var(--color-white);border:var(--border-xs) solid var(--global-border-color-200);padding:var(--space-10)}
+.quiz__progress{font-size:14px;line-height:20px;color:var(--global-text-body-color-tertiary);margin-bottom:var(--space-4)}
+.quiz__prompt{font-size:28px;line-height:1.1;font-weight:var(--font-weight-strong);letter-spacing:var(--tracking-heading);max-width:32ch;margin-bottom:var(--space-6);text-wrap:balance}
+.quiz__opts{display:flex;gap:var(--space-2);flex-wrap:wrap}
+.quiz__opt.is-right{background:var(--color-success-300);border-color:var(--color-success-300);color:var(--color-white)}
+.quiz__opt.is-wrong{border-color:var(--color-critical-300);color:var(--color-critical-400)}
+.quiz__opt[disabled]{cursor:default}
+.quiz__exp{display:none;margin-top:var(--space-6);padding:var(--space-4) var(--space-6);border-left:var(--border-md) solid var(--color-brand-300);background:var(--global-surface-color-100);max-width:70ch}
+.quiz__exp.is-shown{display:block}
+.quiz__nextrow{margin-top:var(--space-4)}
+.quiz__q[hidden],.quiz__done[hidden]{display:none}
+
+/* ============================================================================ COPY BLOCK ([data-copy]) */
+.copyblock{border-radius:var(--corner);border:var(--border-xs) solid var(--global-border-color-200);background:var(--color-white)}
+.copyblock__bar{display:flex;justify-content:space-between;align-items:center;gap:var(--space-4);padding:var(--space-2) var(--space-2) var(--space-2) var(--space-6);
+  background:var(--global-surface-color-100);border-bottom:var(--border-xs) solid var(--global-border-color-200);font-size:14px;line-height:20px;color:var(--global-text-body-color-tertiary)}
+.copyblock pre{margin:0;padding:var(--space-6);font-family:var(--font-brand);font-size:16px;line-height:24px;white-space:pre-wrap;overflow-wrap:anywhere}
+
+/* ============================================================================ ACCORDION : one open at a time */
+.accordion{border-top:var(--border-xs) solid var(--color-neutral-300)}
+.acc__item{border-bottom:var(--border-xs) solid var(--color-neutral-300);transition:border-color var(--duration-fast) var(--easing-standard)}
+.acc__item:hover{border-bottom-color:var(--color-brand-300)}
+.acc__btn{display:flex;width:100%;justify-content:space-between;align-items:center;gap:var(--space-4);min-height:64px;padding:var(--space-4) 0;background:none;border:0;cursor:pointer;
+  font:var(--font-weight-strong) 18px/24px var(--font-brand);letter-spacing:var(--tracking-body);text-align:left;color:var(--color-black)}
+.acc__btn .icon{transition:transform var(--duration-fast) var(--easing-standard)}
+.acc__btn[aria-expanded="true"] .icon{transform:rotate(180deg)}
+.acc__panel{padding:0 0 var(--space-6)} .acc__panel[hidden]{display:none}
+
+/* ============================================================================ CTA BAND: the page's one gradient surface (radial, from brand tokens) */
+.cta{color:var(--color-white);background:radial-gradient(ellipse at 75% 65%,var(--color-brand-300) 0%,var(--color-brand-400) 30%,transparent 60%),
+  radial-gradient(ellipse at 20% 90%,var(--color-brand-400) 0%,var(--color-brand-500) 60%);background-color:var(--color-brand-500)}
+.cta .h2{color:var(--global-text-headline-color-inverse)} .cta .lead{color:var(--global-text-body-color-inverse)}
+
+/* ============================================================================ FOOTER : white, min 88px, no top border */
+.site-footer{min-height:88px;padding:var(--space-10) 0}
+.site-footer .wrap{display:flex;align-items:center;gap:var(--space-6);flex-wrap:wrap}
+.site-footer .sep{flex:1}
+
+/* BACK TO TOP : only on pages taller than ~4 viewports */
+.to-top{border-radius:var(--corner);position:fixed;right:var(--space-6);bottom:var(--space-6);z-index:var(--z-sticky);display:inline-flex;align-items:center;gap:var(--space-2);height:40px;padding:0 var(--space-4);
+  background:var(--color-white);border:var(--border-xs) solid var(--global-border-color-200);box-shadow:var(--shadow-md);color:var(--color-brand-300);font:var(--font-weight-regular) 14px/1 var(--font-brand);
+  cursor:pointer;transform:translateY(calc(100% + var(--space-6) + 8px));transition:transform var(--duration-fast) var(--easing-standard)}
+.to-top.is-shown{transform:none}
+
+/* ============================================================================ MOTION: required reduced-motion override */
+@media (prefers-reduced-motion: reduce){
+  html{scroll-behavior:auto}
+  *,*::before,*::after{transition-duration:.01ms!important;animation-duration:.01ms!important}
+}
+</style>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+
+<!-- ===== ICON SPRITE: Material Symbols Outlined (Apache-2.0), inline so the file stays offline.
+     Use: <svg class="icon" aria-hidden="true" focusable="false"><use href="#i-check"/></svg>
+     Need another icon? Copy its path from the Material Symbols Outlined SVG (wght 400, FILL 0, 24px). Never draw one.
+     BRAND: if the brand has its own monoline icon set, swap the paths and keep the ids. Never mix two icon sets. -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <symbol id="i-target" viewBox="0 -960 960 960"><path d="M324-111.5Q251-143 197-197t-85.5-127Q80-397 80-480t31.5-156Q143-709 197-763t127-85.5Q397-880 480-880t156 31.5Q709-817 763-763t85.5 127Q880-563 880-480t-31.5 156Q817-251 763-197t-127 85.5Q563-80 480-80t-156-31.5ZM707-253q93-93 93-227t-93-227q-93-93-227-93t-227 93q-93 93-93 227t93 227q93 93 227 93t227-93Zm-397-57q-70-70-70-170t70-170q70-70 170-70t170 70q70 70 70 170t-70 170q-70 70-170 70t-170-70Zm283-57q47-47 47-113t-47-113q-47-47-113-47t-113 47q-47 47-47 113t47 113q47 47 113 47t113-47Zm-169.5-56.5Q400-447 400-480t23.5-56.5Q447-560 480-560t56.5 23.5Q560-513 560-480t-23.5 56.5Q513-400 480-400t-56.5-23.5Z"/></symbol>
+  <symbol id="i-growth" viewBox="0 -960 960 960"><path d="m136-240-56-56 296-298 160 160 208-206H640v-80h240v240h-80v-104L536-320 376-480 136-240Z"/></symbol>
+  <symbol id="i-gear" viewBox="0 -960 960 960"><path d="m370-80-16-128q-13-5-24.5-12T307-235l-119 50L78-375l103-78q-1-7-1-13.5v-27q0-6.5 1-13.5L78-585l110-190 119 50q11-8 23-15t24-12l16-128h220l16 128q13 5 24.5 12t22.5 15l119-50 110 190-103 78q1 7 1 13.5v27q0 6.5-2 13.5l103 78-110 190-118-50q-11 8-23 15t-24 12L590-80H370Zm70-80h79l14-106q31-8 57.5-23.5T639-327l99 41 39-68-86-65q5-14 7-29.5t2-31.5q0-16-2-31.5t-7-29.5l86-65-39-68-99 42q-22-23-48.5-38.5T533-694l-13-106h-79l-14 106q-31 8-57.5 23.5T321-633l-99-41-39 68 86 64q-5 15-7 30t-2 32q0 16 2 31t7 30l-86 65 39 68 99-42q22 23 48.5 38.5T427-266l13 106Zm42-180q58 0 99-41t41-99q0-58-41-99t-99-41q-59 0-99.5 41T342-480q0 58 40.5 99t99.5 41Zm-2-140Z"/></symbol>
+  <symbol id="i-bulb" viewBox="0 -960 960 960"><path d="M423.5-103.5Q400-127 400-160h160q0 33-23.5 56.5T480-80q-33 0-56.5-23.5ZM320-200v-80h320v80H320Zm10-120q-69-41-109.5-110T180-580q0-125 87.5-212.5T480-880q125 0 212.5 87.5T780-580q0 81-40.5 150T630-320H330Zm24-80h252q45-32 69.5-79T700-580q0-92-64-156t-156-64q-92 0-156 64t-64 156q0 54 24.5 101t69.5 79Zm126 0Z"/></symbol>
+  <symbol id="i-globe" viewBox="0 -960 960 960"><path d="M324-111.5Q251-143 197-197t-85.5-127Q80-397 80-480t31.5-156Q143-709 197-763t127-85.5Q397-880 480-880t156 31.5Q709-817 763-763t85.5 127Q880-563 880-480t-31.5 156Q817-251 763-197t-127 85.5Q563-80 480-80t-156-31.5ZM440-162v-78q-33 0-56.5-23.5T360-320v-40L168-552q-3 18-5.5 36t-2.5 36q0 121 79.5 212T440-162Zm276-102q41-45 62.5-100.5T800-480q0-98-54.5-179T600-776v16q0 33-23.5 56.5T520-680h-80v80q0 17-11.5 28.5T400-560h-80v80h240q17 0 28.5 11.5T600-440v120h40q26 0 47 15.5t29 40.5Z"/></symbol>
+  <symbol id="i-check" viewBox="0 -960 960 960"><path d="M382-240 154-468l57-57 171 171 367-367 57 57-424 424Z"/></symbol>
+  <symbol id="i-people" viewBox="0 -960 960 960"><path d="M40-160v-112q0-34 17.5-62.5T104-378q62-31 126-46.5T360-440q66 0 130 15.5T616-378q29 15 46.5 43.5T680-272v112H40Zm720 0v-120q0-44-24.5-84.5T666-434q51 6 96 20.5t84 35.5q36 20 55 44.5t19 53.5v120H760ZM247-527q-47-47-47-113t47-113q47-47 113-47t113 47q47 47 47 113t-47 113q-47 47-113 47t-113-47Zm466 0q-47 47-113 47-11 0-28-2.5t-28-5.5q27-32 41.5-71t14.5-81q0-42-14.5-81T544-792q14-5 28-6.5t28-1.5q66 0 113 47t47 113q0 66-47 113ZM120-240h480v-32q0-11-5.5-20T580-306q-54-27-109-40.5T360-360q-56 0-111 13.5T140-306q-9 5-14.5 14t-5.5 20v32Zm296.5-343.5Q440-607 440-640t-23.5-56.5Q393-720 360-720t-56.5 23.5Q280-673 280-640t23.5 56.5Q327-560 360-560t56.5-23.5ZM360-240Zm0-400Z"/></symbol>
+  <symbol id="i-chart" viewBox="0 -960 960 960"><path d="M640-160v-280h160v280H640Zm-240 0v-640h160v640H400Zm-240 0v-440h160v440H160Z"/></symbol>
+  <symbol id="i-doc" viewBox="0 -960 960 960"><path d="M320-240h320v-80H320v80Zm0-160h320v-80H320v80ZM240-80q-33 0-56.5-23.5T160-160v-640q0-33 23.5-56.5T240-880h320l240 240v480q0 33-23.5 56.5T720-80H240Zm280-520v-200H240v640h480v-440H520ZM240-800v200-200 640-640Z"/></symbol>
+  <symbol id="i-shield" viewBox="0 -960 960 960"><path d="M480-80q-139-35-229.5-159.5T160-516v-244l320-120 320 120v244q0 152-90.5 276.5T480-80Zm0-84q104-33 172-132t68-220v-189l-240-90-240 90v189q0 121 68 220t172 132Zm0-316Z"/></symbol>
+  <symbol id="i-clock" viewBox="0 -960 960 960"><path d="m612-292 56-56-148-148v-184h-80v216l172 172ZM480-80q-83 0-156-31.5T197-197q-54-54-85.5-127T80-480q0-83 31.5-156T197-763q54-54 127-85.5T480-880q83 0 156 31.5T763-763q54 54 85.5 127T880-480q0 83-31.5 156T763-197q-54 54-127 85.5T480-80Zm0-400Zm0 320q133 0 226.5-93.5T800-480q0-133-93.5-226.5T480-800q-133 0-226.5 93.5T160-480q0 133 93.5 226.5T480-160Z"/></symbol>
+  <symbol id="i-network" viewBox="0 -960 960 960"><path d="M155-75q-35-35-35-85t35-85q35-35 85-35 14 0 26 3t23 8l57-71q-28-31-39-70t-5-78l-81-27q-17 25-43 40t-58 15q-50 0-85-35T0-580q0-50 35-85t85-35q50 0 85 35t35 85v8l81 28q20-36 53.5-61t75.5-32v-87q-39-11-64.5-42.5T360-840q0-50 35-85t85-35q50 0 85 35t35 85q0 42-26 73.5T510-724v87q42 7 75.5 32t53.5 61l81-28v-8q0-50 35-85t85-35q50 0 85 35t35 85q0 50-35 85t-85 35q-32 0-58.5-15T739-515l-81 27q6 39-5 77.5T614-340l57 70q11-5 23-7.5t26-2.5q50 0 85 35t35 85q0 50-35 85t-85 35q-50 0-85-35t-35-85q0-20 6.5-38.5T624-232l-57-71q-41 23-87.5 23T392-303l-56 71q11 15 17.5 33.5T360-160q0 50-35 85t-85 35q-50 0-85-35Zm-35-465q17 0 28.5-11.5T160-580q0-17-11.5-28.5T120-620q-17 0-28.5 11.5T80-580q0 17 11.5 28.5T120-540Zm148.5 408.5Q280-143 280-160t-11.5-28.5Q257-200 240-200t-28.5 11.5Q200-177 200-160t11.5 28.5Q223-120 240-120t28.5-11.5Zm240-680Q520-823 520-840t-11.5-28.5Q497-880 480-880t-28.5 11.5Q440-857 440-840t11.5 28.5Q463-800 480-800t28.5-11.5ZM480-360q42 0 71-29t29-71q0-42-29-71t-71-29q-42 0-71 29t-29 71q0 42 29 71t71 29Zm268.5 228.5Q760-143 760-160t-11.5-28.5Q737-200 720-200t-28.5 11.5Q680-177 680-160t11.5 28.5Q703-120 720-120t28.5-11.5Zm120-420Q880-563 880-580t-11.5-28.5Q857-620 840-620t-28.5 11.5Q800-597 800-580t11.5 28.5Q823-540 840-540t28.5-11.5ZM480-840ZM120-580Zm360 120Zm360-120ZM240-160Zm480 0Z"/></symbol>
+  <symbol id="i-search" viewBox="0 -960 960 960"><path d="M784-120 532-372q-30 24-69 38t-83 14q-109 0-184.5-75.5T120-580q0-109 75.5-184.5T380-840q109 0 184.5 75.5T640-580q0 44-14 83t-38 69l252 252-56 56ZM380-400q75 0 127.5-52.5T560-580q0-75-52.5-127.5T380-760q-75 0-127.5 52.5T200-580q0 75 52.5 127.5T380-400Z"/></symbol>
+  <symbol id="i-rocket" viewBox="0 -960 960 960"><path d="m226-559 78 33q14-28 29-54t33-52l-56-11-84 84Zm142 83 114 113q42-16 90-49t90-75q70-70 109.5-155.5T806-800q-72-5-158 34.5T492-656q-42 42-75 90t-49 90Zm155-121.5q0-33.5 23-56.5t57-23q34 0 57 23t23 56.5q0 33.5-23 56.5t-57 23q-34 0-57-23t-23-56.5ZM565-220l84-84-11-56q-26 18-52 32.5T532-299l33 79Zm313-653q19 121-23.5 235.5T708-419l20 99q4 20-2 39t-20 33L538-80l-84-197-171-171-197-84 167-168q14-14 33.5-20t39.5-2l99 20q104-104 218-147t235-24ZM157-321q35-35 85.5-35.5T328-322q35 35 34.5 85.5T327-151q-25 25-83.5 43T82-76q14-103 32-161.5t43-83.5Zm57 56q-10 10-20 36.5T180-175q27-4 53.5-13.5T270-208q12-12 13-29t-11-29q-12-12-29-11.5T214-265Z"/></symbol>
+  <symbol id="i-arrow-forward" viewBox="0 -960 960 960"><path d="M647-440H160v-80h487L423-744l57-56 320 320-320 320-57-56 224-224Z"/></symbol>
+  <symbol id="i-arrow-back" viewBox="0 -960 960 960"><path d="m313-440 224 224-57 56-320-320 320-320 57 56-224 224h487v80H313Z"/></symbol>
+  <symbol id="i-replay" viewBox="0 -960 960 960"><path d="M339.5-108.5q-65.5-28.5-114-77t-77-114Q120-365 120-440h80q0 117 81.5 198.5T480-160q117 0 198.5-81.5T760-440q0-117-81.5-198.5T480-720h-6l62 62-56 58-160-160 160-160 56 58-62 62h6q75 0 140.5 28.5t114 77q48.5 48.5 77 114T840-440q0 75-28.5 140.5t-77 114q-48.5 48.5-114 77T480-80q-75 0-140.5-28.5Z"/></symbol>
+  <symbol id="i-copy" viewBox="0 -960 960 960"><path d="M360-240q-33 0-56.5-23.5T280-320v-480q0-33 23.5-56.5T360-880h360q33 0 56.5 23.5T800-800v480q0 33-23.5 56.5T720-240H360Zm0-80h360v-480H360v480ZM200-80q-33 0-56.5-23.5T120-160v-560h80v560h440v80H200Zm160-240v-480 480Z"/></symbol>
+  <symbol id="i-close" viewBox="0 -960 960 960"><path d="m256-200-56-56 224-224-224-224 56-56 224 224 224-224 56 56-224 224 224 224-56 56-224-224-224 224Z"/></symbol>
+  <symbol id="i-expand-more" viewBox="0 -960 960 960"><path d="M480-345 240-585l56-56 184 184 184-184 56 56-240 240Z"/></symbol>
+  <symbol id="i-expand-less" viewBox="0 -960 960 960"><path d="m296-345-56-56 240-240 240 240-56 56-184-184-184 184Z"/></symbol>
+  <symbol id="i-open-in-new" viewBox="0 -960 960 960"><path d="M200-120q-33 0-56.5-23.5T120-200v-560q0-33 23.5-56.5T200-840h280v80H200v560h560v-280h80v280q0 33-23.5 56.5T760-120H200Zm188-212-56-56 372-372H560v-80h280v280h-80v-144L388-332Z"/></symbol>
+  <symbol id="i-sparkle" viewBox="0 -960 960 960"><path d="m760-600-50-110-110-50 110-50 50-110 50 110 110 50-110 50-50 110Zm0 560-50-110-110-50 110-50 50-110 50 110 110 50-110 50-50 110ZM360-160 260-380 40-480l220-100 100-220 100 220 220 100-220 100-100 220Zm0-194 40-86 86-40-86-40-40-86-40 86-86 40 86 40 40 86Zm0-126Z"/></symbol>
+  <symbol id="i-info" viewBox="0 -960 960 960"><path d="M440-280h80v-240h-80v240Zm68.5-331.5Q520-623 520-640t-11.5-28.5Q497-680 480-680t-28.5 11.5Q440-657 440-640t11.5 28.5Q463-600 480-600t28.5-11.5ZM480-80q-83 0-156-31.5T197-197q-54-54-85.5-127T80-480q0-83 31.5-156T197-763q54-54 127-85.5T480-880q83 0 156 31.5T763-763q54 54 85.5 127T880-480q0 83-31.5 156T763-197q-54 54-127 85.5T480-80Zm0-80q134 0 227-93t93-227q0-134-93-227t-227-93q-134 0-227 93t-93 227q0 134 93 227t227 93Zm0-320Z"/></symbol>
+  <symbol id="i-arrow-up" viewBox="0 -960 960 960"><path d="M440-160v-487L216-423l-56-57 320-320 320 320-56 57-224-224v487h-80Z"/></symbol>
+</svg>
+
+<header class="site-header">
+  <div class="wrap">
+    <!-- LOGO SLOT (header): paste the brand's exact wordmark SVG here, keep class="logo", role="img" and an aria-label
+         with the brand name. Never redraw a logo as styled text. The dashed box below is a placeholder, not a logo. -->
+    <svg class="logo" viewBox="0 0 120 32" role="img" aria-label="Brand name (placeholder)" xmlns="http://www.w3.org/2000/svg"><rect x="0.5" y="0.5" width="119" height="31" fill="none" stroke="currentColor" stroke-dasharray="4 3"/><path fill="currentColor" d="M44 11h2v8h4v2h-6zM53 11h4a3 3 0 0 1 3 3v4a3 3 0 0 1-3 3h-4a3 3 0 0 1-3-3v-4a3 3 0 0 1 3-3zm0 2a1 1 0 0 0-1 1v4a1 1 0 0 0 1 1h4a1 1 0 0 0 1-1v-4a1 1 0 0 0-1-1zM65 11h5v2h-5a1 1 0 0 0-1 1v4a1 1 0 0 0 1 1h3v-2h-2v-2h4v6h-5a3 3 0 0 1-3-3v-4a3 3 0 0 1 3-3zM76 11h4a3 3 0 0 1 3 3v4a3 3 0 0 1-3 3h-4a3 3 0 0 1-3-3v-4a3 3 0 0 1 3-3zm0 2a1 1 0 0 0-1 1v4a1 1 0 0 0 1 1h4a1 1 0 0 0 1-1v-4a1 1 0 0 0-1-1z"/></svg>
+    <!-- Optional partner/client co-brand lockup (written approval required):
+    <div class="cobrand">(brand logo SVG)<span class="cobrand__sep" aria-hidden="true"></span><img class="cobrand__client" (src = asset:partner-logo.svg) alt="Partner name"></div> -->
+    <nav class="nav" id="nav" aria-label="Sections">
+      <a href="#intro">Overview</a>
+      <a href="#impact">Impact</a>
+      <a href="#journey">How it works</a>
+      <a href="#approach">Approach</a>
+      <a href="#deliver">Deliverables</a>
+      <a href="#cta">Next steps</a>
+    </nav>
+  </div>
+</header>
+
+<main id="main" tabindex="-1">
+  <!-- DEMO CONTENT (fictional). Every number is a placeholder: replace it with a sourced figure, or keep it
+       visibly labelled as illustrative. Never ship an invented metric. Headlines: sentence case, no period. -->
+
+  <!-- ===== INTRO BAND (default). For a cover, swap in <section class="hero"> with .h1 and Inverse buttons. ===== -->
+  <section id="intro" class="intro">
+    <div class="wrap">
+      <p class="meta-line">Pilot proposal <i aria-hidden="true"></i> Draft for discussion</p>
+      <h1 class="h1 measure">New suppliers trading in one day instead of three weeks</h1>
+      <p class="lead measure">A ten-week pilot that moves supplier onboarding from email and spreadsheets onto one shared intake, starting with a single product category.</p>
+      <div class="intro-meta">
+        <div><div class="k">Duration</div><div class="v">10 weeks</div></div>
+        <div><div class="k">Scope</div><div class="v">One product category</div></div>
+        <div><div class="k">Decision at the end</div><div class="v">Scale, adjust or stop</div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== WHAT IT IS: two column ===== -->
+  <section id="what" class="divide">
+    <div class="wrap cols">
+      <h2 class="h2">One intake for every new supplier</h2>
+      <div class="stack-24">
+        <p class="lead">Today a new supplier passes through procurement, finance, legal and IT in turn, and each team keeps its own copy of the same details.</p>
+        <ul class="feature-list">
+          <li><svg class="icon" aria-hidden="true" focusable="false"><use href="#i-check"/></svg><div><strong>One form, entered once,</strong> that every team reads from.</div></li>
+          <li><svg class="icon" aria-hidden="true" focusable="false"><use href="#i-check"/></svg><div><strong>Checks run in parallel</strong> where they used to wait on each other.</div></li>
+          <li><svg class="icon" aria-hidden="true" focusable="false"><use href="#i-check"/></svg><div><strong>A visible status</strong> the supplier can follow without chasing anyone.</div></li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== IMPACT: headline numbers (count up once on reveal) + insight callout ===== -->
+  <section id="impact" class="divide">
+    <div class="wrap">
+      <div class="head-split">
+        <h2 class="h2">Most of the three weeks is waiting</h2>
+        <p class="lead">Placeholder figures. Replace each with a sourced number before this goes out.</p>
+      </div>
+      <div class="stat-grid" data-seq data-seq-gap="70" data-seq-steps="10">
+        <div class="stat"><div class="num"><span data-values="0,2,4,6,8,10,12,14,16,18,19">19</span></div><h3>Days in queues</h3><p class="small">Of 21 working days end to end (illustrative)</p></div>
+        <div class="stat"><div class="num"><span data-values="0,1,2,3,4,4,4,4,4,4,4">4</span></div><h3>Teams re-enter the data</h3><p class="small">Procurement, finance, legal, IT</p></div>
+        <div class="stat"><div class="num"><span data-values="0,3,6,9,12,15,18,21,24,27,30">30</span>%</div><h3>Records with a mismatch</h3><p class="small">Sample of last quarter's files (illustrative)</p></div>
+        <div class="stat stat--inverse"><div class="num">10</div><h3>Weeks to a decision</h3><p class="small">Pilot length</p></div>
+      </div>
+      <p class="insight"><svg class="icon icon-20" aria-hidden="true" focusable="false"><use href="#i-sparkle"/></svg><span><strong>The work itself takes two days.</strong> Placeholder insight: state the one so-what of the numbers above in a sentence or two.</span></p>
+    </div>
+  </section>
+
+  <!-- ===== DEMO STAGE: sequenced demo ([data-seq]). Plays once on reveal (under 5s); Replay restarts;
+       "Next step" lets a presenter walk through it live. ===== -->
+  <section id="journey" class="band">
+    <div class="wrap">
+      <div class="head-split">
+        <h2 class="h2">One new supplier, two ways</h2>
+        <p class="lead">The same request, through today's hand-offs and through the shared intake.</p>
+      </div>
+      <div data-seq data-seq-gap="900">
+        <div class="stagebar">
+          <span class="small">Illustrative timeline</span>
+          <span class="stagebar__ctl">
+            <button class="btn btn-ghost btn-sm" type="button" data-replay><svg class="icon icon-20" aria-hidden="true" focusable="false"><use href="#i-replay"/></svg><span class="lbl">Replay</span></button>
+            <button class="btn btn-tertiary btn-sm" type="button" data-seq-next><span class="lbl">Next step</span><svg class="icon icon-20" aria-hidden="true" focusable="false"><use href="#i-arrow-forward"/></svg></button>
+          </span>
+        </div>
+        <div class="lanes">
+          <div class="lane">
+            <div class="lane__head"><h3>Today</h3><span class="lane__n"><span data-values="0,1,6,11,16,21">21</span><small>days</small></span></div>
+            <ol>
+              <li class="seq-item" data-at="1">Procurement request <b>Day 1</b></li>
+              <li class="seq-item" data-at="2">Finance checks bank details <b>Day 6</b></li>
+              <li class="seq-item" data-at="3">Legal reviews terms <b>Day 11</b></li>
+              <li class="seq-item" data-at="4">IT creates the vendor record <b>Day 16</b></li>
+              <li class="seq-item" data-at="5">First order placed <b>Day 21</b></li>
+            </ol>
+          </div>
+          <div class="lane lane--after">
+            <div class="lane__head"><h3>With the shared intake</h3><span class="lane__n"><span data-values="0,1,1,1,1,1">1</span><small>day</small></span></div>
+            <ol>
+              <li class="seq-item" data-at="1">One form, checks in parallel, first order the same day <b>Day 1</b></li>
+            </ol>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== APPROACH: before/after (the "after" panel is the section's one Inverse tile), then a stepper ===== -->
+  <section id="approach">
+    <div class="wrap stack-40">
+      <h2 class="h2 measure">From four queues to one shared record</h2>
+      <div class="panels">
+        <div class="panel"><p class="label">Before</p><p class="body">Each team asks the supplier for the same details, stores its own copy and waits for the team before it.</p></div>
+        <div class="panel is-after"><p class="label">After</p><p class="body">The supplier fills in one form. Every team works from that record, and the checks run side by side.</p></div>
+      </div>
+
+      <div data-stepper>
+        <div class="steptabs" role="tablist" aria-label="How the pilot runs">
+          <button class="steptab" role="tab" type="button" id="st-t1" aria-controls="st-1" aria-selected="true"><b>1</b><span>Weeks 1–2</span><span class="sr-only"></span></button>
+          <button class="steptab" role="tab" type="button" id="st-t2" aria-controls="st-2" aria-selected="false" tabindex="-1"><b>2</b><span>Weeks 3–5</span><span class="sr-only"></span></button>
+          <button class="steptab" role="tab" type="button" id="st-t3" aria-controls="st-3" aria-selected="false" tabindex="-1"><b>3</b><span>Weeks 6–9</span><span class="sr-only"></span></button>
+          <button class="steptab" role="tab" type="button" id="st-t4" aria-controls="st-4" aria-selected="false" tabindex="-1"><b>4</b><span>Week 10</span><span class="sr-only"></span></button>
+        </div>
+        <div class="steppanel" role="tabpanel" id="st-1" aria-labelledby="st-t1" tabindex="0"><div class="cols"><h3 class="h3">Map</h3><p class="body">Walk five recent onboardings end to end and time every hand-off.</p></div></div>
+        <div class="steppanel" role="tabpanel" id="st-2" aria-labelledby="st-t2" tabindex="0" hidden><div class="cols"><h3 class="h3">Build</h3><p class="body">One intake form and a shared record, wired to the checks each team already runs.</p></div></div>
+        <div class="steppanel" role="tabpanel" id="st-3" aria-labelledby="st-t3" tabindex="0" hidden><div class="cols"><h3 class="h3">Run</h3><p class="body">Onboard every new supplier in the pilot category through the new path and measure it.</p></div></div>
+        <div class="steppanel" role="tabpanel" id="st-4" aria-labelledby="st-t4" tabindex="0" hidden><div class="cols"><h3 class="h3">Decide</h3><p class="body">Compare against the baseline from week 1 and decide whether to scale, adjust or stop.</p></div></div>
+        <div class="stepnav">
+          <button class="btn btn-ghost btn-sm" type="button" data-step-prev><svg class="icon icon-20" aria-hidden="true" focusable="false"><use href="#i-arrow-back"/></svg><span class="lbl">Back</span></button>
+          <button class="btn btn-tertiary btn-sm" type="button" data-step-next><span class="lbl">Next step</span><svg class="icon icon-20" aria-hidden="true" focusable="false"><use href="#i-arrow-forward"/></svg></button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== DELIVERABLES: cards with tags ===== -->
+  <section id="deliver" class="divide">
+    <div class="wrap">
+      <div class="head-split">
+        <h2 class="h2">What you have at the end of week 10</h2>
+        <p class="lead">Each one is useful on its own, whatever the decision.</p>
+      </div>
+      <div class="cards">
+        <div class="card"><svg class="icon icon-40" aria-hidden="true" focusable="false"><use href="#i-search"/></svg><h3 class="h4">Baseline</h3><p class="body">Measured time and rework for today's process, hand-off by hand-off.</p><div class="tags"><span class="tag">Weeks 1–2</span></div></div>
+        <div class="card"><svg class="icon icon-40" aria-hidden="true" focusable="false"><use href="#i-doc"/></svg><h3 class="h4">Working intake</h3><p class="body">The form and shared record, live for one product category.</p><div class="tags"><span class="tag">Weeks 3–9</span></div></div>
+        <div class="card"><svg class="icon icon-40" aria-hidden="true" focusable="false"><use href="#i-chart"/></svg><h3 class="h4">Decision pack</h3><p class="body">Pilot results against the baseline, with the cost to scale.</p><div class="tags"><span class="tag tag--brand">Week 10</span></div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== CHECK YOURSELF: quiz ([data-quiz]). The prompt never gives the answer away. ===== -->
+  <section id="check" class="band">
+    <div class="wrap">
+      <h2 class="h2 measure" style="margin-bottom:var(--space-8)">Myth or fact?</h2>
+      <div class="quiz" data-quiz>
+        <p class="quiz__progress" data-quiz-progress></p>
+        <div class="quiz__q" data-quiz-q>
+          <p class="quiz__prompt">"A shared intake means the teams lose their own checks."</p>
+          <div class="quiz__opts"><button type="button" class="btn btn-tertiary quiz__opt" data-correct="myth"><span class="lbl">Myth</span></button><button type="button" class="btn btn-tertiary quiz__opt" data-correct="fact"><span class="lbl">Fact</span></button></div>
+          <div class="quiz__exp" data-answer="myth"><strong>Myth.</strong> Each team keeps its checks. They read from one record instead of asking the supplier again.</div>
+        </div>
+        <div class="quiz__q" data-quiz-q hidden>
+          <p class="quiz__prompt">"Most of the delay comes from waiting between teams."</p>
+          <div class="quiz__opts"><button type="button" class="btn btn-tertiary quiz__opt" data-correct="myth"><span class="lbl">Myth</span></button><button type="button" class="btn btn-tertiary quiz__opt" data-correct="fact"><span class="lbl">Fact</span></button></div>
+          <div class="quiz__exp" data-answer="fact"><strong>Fact.</strong> In the illustrative baseline, 19 of 21 days are queue time. Running checks in parallel removes the queues.</div>
+        </div>
+        <div class="quiz__done" data-quiz-done hidden>
+          <p class="quiz__prompt">The pattern: the checks stay, the waiting goes.</p>
+          <button type="button" class="btn btn-tertiary btn-sm" data-quiz-restart><span class="lbl">Start over</span></button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== QUESTIONS: accordion, one open at a time ===== -->
+  <section id="faq">
+    <div class="wrap cols">
+      <h2 class="h2">Common questions</h2>
+      <div class="accordion" data-accordion>
+        <div class="acc__item">
+          <h3><button class="acc__btn" type="button" aria-expanded="false" aria-controls="acc-1" id="acc-b1">What do we need to prepare?<svg class="icon" aria-hidden="true" focusable="false"><use href="#i-expand-more"/></svg></button></h3>
+          <div class="acc__panel" id="acc-1" role="region" aria-labelledby="acc-b1" hidden><p class="body">Five recent onboarding files and one person from each of the four teams for two hours in week 1.</p></div>
+        </div>
+        <div class="acc__item">
+          <h3><button class="acc__btn" type="button" aria-expanded="false" aria-controls="acc-2" id="acc-b2">What happens after week 10?<svg class="icon" aria-hidden="true" focusable="false"><use href="#i-expand-more"/></svg></button></h3>
+          <div class="acc__panel" id="acc-2" role="region" aria-labelledby="acc-b2" hidden><p class="body">You decide whether to extend the intake to more categories. Nothing is committed beyond the pilot.</p></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== CTA BAND: the page's one gradient surface. Primary CTA = Inverse Secondary. ===== -->
+  <section id="cta" class="cta">
+    <div class="wrap">
+      <div class="stack-24 measure">
+        <h2 class="h2">Pick the pilot category</h2>
+        <p class="lead">In a one-hour working session we choose the category, name the four team contacts and fix the week 1 start date.</p>
+        <div class="btn-row" style="margin-top:var(--space-4)">
+          <a class="btn btn-inv-tertiary" href="#deliver"><span class="lbl">Review the deliverables</span></a>
+          <a class="btn btn-inv-secondary" href="#intro"><span class="lbl">Book the session</span><svg class="icon icon-20" aria-hidden="true" focusable="false"><use href="#i-arrow-forward"/></svg></a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<footer class="site-footer">
+  <div class="wrap">
+    <!-- LOGO SLOT (footer): paste the brand's mark or compact logo SVG here, keep class="logo-mark". Placeholder below. -->
+    <svg class="logo-mark" viewBox="0 0 32 32" role="img" aria-label="Brand name (placeholder)" xmlns="http://www.w3.org/2000/svg"><rect x="0.5" y="0.5" width="31" height="31" fill="none" stroke="currentColor" stroke-dasharray="4 3"/></svg>
+    <span class="sep"></span>
+    <!-- BRAND: footer / legal line -->
+    <span class="small">&copy; 2026 Brand name. Figures shown are illustrative.</span>
+  </div>
+</footer>
+
+<button class="to-top" type="button" aria-label="Back to top" data-to-top><svg class="icon icon-20" aria-hidden="true" focusable="false"><use href="#i-arrow-up"/></svg>Top</button>
+
+<script>
+/* Interactive components (vanilla, offline-safe). Markup contracts: interactions.md. */
+(function(){
+  var d = document;
+  d.documentElement.classList.add("js");
+  var reduce = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  var hasIO = "IntersectionObserver" in window;
+  function all(sel, root){ return Array.prototype.slice.call((root || d).querySelectorAll(sel)); }
+  function off(btn){ return btn && btn.getAttribute("aria-disabled") === "true"; }
+  function setOff(btn, v){ if (btn) btn.setAttribute("aria-disabled", v ? "true" : "false"); }
+
+  /* Scroll-spy: highlight the nav link for the section in view. */
+  var navLinks = all("#nav a");
+  if (hasIO && navLinks.length) {
+    var spy = new IntersectionObserver(function(es){
+      es.forEach(function(e){
+        if (e.isIntersecting) navLinks.forEach(function(a){ a.classList.toggle("active", a.getAttribute("href") === "#" + e.target.id); });
+      });
+    }, { rootMargin: "-45% 0px -45% 0px" });
+    all("main section[id]").forEach(function(s){ spy.observe(s); });
+  }
+
+  /* Shared image: [data-img-from="<selector>"] reuses an inlined <img> so each image is embedded once. */
+  all("[data-img-from]").forEach(function(img){
+    var src = d.querySelector(img.getAttribute("data-img-from"));
+    if (src && src.src) img.src = src.src;
+  });
+
+  /* Copy: [data-copy="#id"] copies that element's text. Silent success: the label reads "Copied" for 1.6s,
+     and a visually hidden role="status" line announces it to screen readers. */
+  var status = d.createElement("p"); status.className = "sr-only"; status.setAttribute("role", "status"); d.body.appendChild(status);
+  all("[data-copy]").forEach(function(btn){
+    btn.addEventListener("click", function(){
+      var el = d.querySelector(btn.getAttribute("data-copy"));
+      if (!el || !navigator.clipboard) return;
+      navigator.clipboard.writeText(el.innerText.trim()).then(function(){
+        var lbl = btn.querySelector(".lbl") || btn, t = lbl.textContent;
+        lbl.textContent = "Copied"; status.textContent = "Copied to clipboard";
+        setTimeout(function(){ lbl.textContent = t; status.textContent = ""; }, 1600);
+      });
+    });
+  });
+
+  /* Accordion: [data-accordion] > .acc__btn[aria-controls]. One item open at a time; Enter and Space work natively. */
+  all("[data-accordion]").forEach(function(acc){
+    var btns = all(".acc__btn", acc);
+    btns.forEach(function(b){
+      b.addEventListener("click", function(){
+        var open = b.getAttribute("aria-expanded") !== "true";
+        btns.forEach(function(o){
+          var on = o === b && open, p = d.getElementById(o.getAttribute("aria-controls"));
+          o.setAttribute("aria-expanded", on ? "true" : "false");
+          if (p) p.hidden = !on;
+        });
+      });
+    });
+  });
+
+  /* Back to top: [data-to-top] slides in after 300px of scroll (watched with a sentinel, no scroll listener). */
+  var toTop = d.querySelector("[data-to-top]");
+  if (toTop && hasIO) {
+    var sentinel = d.createElement("div");
+    sentinel.style.cssText = "position:absolute;top:300px;left:0;width:1px;height:1px";
+    sentinel.setAttribute("aria-hidden", "true"); d.body.appendChild(sentinel);
+    new IntersectionObserver(function(es){ toTop.classList.toggle("is-shown", !es[0].isIntersecting && es[0].boundingClientRect.top < 0); }).observe(sentinel);
+    toTop.addEventListener("click", function(){ window.scrollTo({ top: 0, behavior: reduce ? "auto" : "smooth" }); d.getElementById("main").focus({ preventScroll: true }); });
+  }
+
+  /* Sequenced demo: [data-seq] plays its [data-at="n"] steps once when 15% visible.
+     [data-values="a,b,c"] shows one value per step (tweened). [data-replay] restarts,
+     [data-seq-next] steps by hand. data-seq-gap = ms per step, data-seq-steps = force step count.
+     Reduced motion and no IntersectionObserver: jump to the final state. */
+  function fmt(v, dec){ return dec ? v.toFixed(dec) : Math.round(v).toLocaleString("en-US"); }
+  function tween(el, from, to, dec){
+    if (el._raf) cancelAnimationFrame(el._raf);
+    if (reduce || from === to) { el.textContent = fmt(to, dec); return; }
+    var t0 = null;
+    function f(ts){
+      if (!t0) t0 = ts;
+      var k = Math.min(1, (ts - t0) / 520), e = 1 - Math.pow(1 - k, 3);
+      el.textContent = fmt(from + (to - from) * e, dec);
+      if (k < 1) el._raf = requestAnimationFrame(f);
+    }
+    el._raf = requestAnimationFrame(f);
+  }
+  all("[data-seq]").forEach(function(seq){
+    var gap = parseInt(seq.getAttribute("data-seq-gap"), 10) || 800;
+    var items = all("[data-at]", seq);
+    var vals = all("[data-values]", seq).map(function(el){
+      var raw = el.getAttribute("data-values").split(","), last = raw[raw.length - 1];
+      var arr = raw.map(Number);
+      return { el: el, arr: arr, dec: last.indexOf(".") > -1 ? last.split(".")[1].length : 0, cur: arr[arr.length - 1] };
+    });
+    var max = parseInt(seq.getAttribute("data-seq-steps"), 10) || 0;
+    items.forEach(function(el){ max = Math.max(max, parseInt(el.getAttribute("data-at"), 10)); });
+    vals.forEach(function(v){ max = Math.max(max, v.arr.length - 1); });
+    var next = seq.querySelector("[data-seq-next]"), step = 0, timer = null, played = false;
+    function render(k, instant){
+      step = k;
+      items.forEach(function(el){ el.classList.toggle("is-on", parseInt(el.getAttribute("data-at"), 10) <= k); });
+      vals.forEach(function(v){
+        var to = v.arr[Math.min(k, v.arr.length - 1)];
+        if (instant) { if (v.el._raf) cancelAnimationFrame(v.el._raf); v.el.textContent = fmt(to, v.dec); }
+        else tween(v.el, v.cur, to, v.dec);
+        v.cur = to;
+      });
+      setOff(next, k >= max);
+    }
+    function stop(){ clearTimeout(timer); timer = null; }
+    function tick(){ if (step < max) timer = setTimeout(function(){ render(step + 1); tick(); }, gap); }
+    function play(){ stop(); played = true; if (reduce) { render(max, true); return; } render(0, true); tick(); }
+    render(0, true);
+    all("[data-replay]", seq).forEach(function(b){ b.addEventListener("click", play); });
+    if (next) next.addEventListener("click", function(){ if (off(next)) return; stop(); played = true; render(step + 1); });
+    if (hasIO) {
+      var io = new IntersectionObserver(function(es){
+        es.forEach(function(e){ if (e.isIntersecting && !played) { play(); io.unobserve(seq); } });
+      }, { threshold: 0.15 });
+      io.observe(seq);
+    } else render(max, true);
+  });
+
+  /* Stepper / tabs: [data-stepper] with role=tab buttons (aria-controls -> role=tabpanel).
+     Arrow keys, Home, End. Optional [data-step-prev]/[data-step-next].
+     data-stepper="tabs" = plain tabs (no "done" marking for earlier tabs). */
+  all("[data-stepper]").forEach(function(st){
+    var tabs = all('[role="tab"]', st), prev = st.querySelector("[data-step-prev]"), nxt = st.querySelector("[data-step-next]");
+    var mark = st.getAttribute("data-stepper") !== "tabs", cur = 0;
+    function show(i, focus){
+      cur = Math.max(0, Math.min(tabs.length - 1, i));
+      tabs.forEach(function(t, j){
+        var on = j === cur, panel = d.getElementById(t.getAttribute("aria-controls"));
+        t.setAttribute("aria-selected", on ? "true" : "false");
+        t.tabIndex = on ? 0 : -1;
+        if (mark) {
+          t.classList.toggle("is-done", j < cur);
+          var sr = t.querySelector(".sr-only"); if (sr) sr.textContent = j < cur ? " (done)" : "";
+        }
+        if (panel) {
+          panel.hidden = !on;
+          panel.classList.remove("is-in");
+          if (on && !reduce) { void panel.offsetWidth; panel.classList.add("is-in"); }
+        }
+      });
+      if (focus) tabs[cur].focus();
+      setOff(prev, cur === 0); setOff(nxt, cur === tabs.length - 1);
+    }
+    tabs.forEach(function(t, j){
+      t.addEventListener("click", function(){ show(j); });
+      t.addEventListener("keydown", function(e){
+        var k = { ArrowRight: cur + 1, ArrowLeft: cur - 1, Home: 0, End: tabs.length - 1 }[e.key];
+        if (k !== undefined) { e.preventDefault(); show(k, true); }
+      });
+    });
+    if (prev) prev.addEventListener("click", function(){ if (!off(prev)) show(cur - 1); });
+    if (nxt) nxt.addEventListener("click", function(){ if (!off(nxt)) show(cur + 1); });
+    show(0);
+  });
+
+  /* Quiz: [data-quiz] > [data-quiz-q] (each with .quiz__opt[data-correct] buttons and one
+     .quiz__exp[data-answer]) + [data-quiz-done]. One question at a time; pick, see why, go next. */
+  all("[data-quiz]").forEach(function(quiz){
+    var qs = all("[data-quiz-q]", quiz), done = quiz.querySelector("[data-quiz-done]");
+    var prog = quiz.querySelector("[data-quiz-progress]"), i = 0;
+    function show(n){
+      i = n;
+      qs.forEach(function(q, j){ q.hidden = j !== n; });
+      if (done) done.hidden = n < qs.length;
+      if (prog) prog.textContent = n < qs.length ? "Question " + (n + 1) + " of " + qs.length : "";
+    }
+    qs.forEach(function(q, j){
+      var exp = q.querySelector("[data-answer]"), right = exp ? exp.getAttribute("data-answer") : null;
+      all(".quiz__opt", q).forEach(function(opt, _, opts){
+        opt.addEventListener("click", function(){
+          if (q.getAttribute("data-done")) return;
+          q.setAttribute("data-done", "1");
+          all(".quiz__opt", q).forEach(function(o){
+            o.disabled = true;
+            if (o.getAttribute("data-correct") === right) o.classList.add("is-right");
+            else if (o === opt) o.classList.add("is-wrong");
+          });
+          if (exp) exp.classList.add("is-shown");
+          var row = d.createElement("div"); row.className = "quiz__nextrow";
+          var b = d.createElement("button"); b.type = "button"; b.className = "btn btn-tertiary btn-sm";
+          var lb = d.createElement("span"); lb.className = "lbl";
+          lb.textContent = j < qs.length - 1 ? "Next question" : "See the pattern"; b.appendChild(lb);
+          b.addEventListener("click", function(){ show(j + 1); });
+          row.appendChild(b); q.appendChild(row); b.focus();
+        });
+      });
+    });
+    var restart = quiz.querySelector("[data-quiz-restart]");
+    if (restart) restart.addEventListener("click", function(){
+      qs.forEach(function(q){
+        q.removeAttribute("data-done");
+        var row = q.querySelector(".quiz__nextrow"); if (row) row.remove();
+        all(".quiz__opt", q).forEach(function(o){ o.disabled = false; o.classList.remove("is-right", "is-wrong"); });
+        var exp = q.querySelector("[data-answer]"); if (exp) exp.classList.remove("is-shown");
+      });
+      show(0);
+    });
+    show(0);
+  });
+})();
+
+</script>
+</body>
+</html>
