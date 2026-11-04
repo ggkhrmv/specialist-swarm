@@ -26,7 +26,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 import common
-from common import (BRANCH, HERE, INPUTS_DIR, NAMESPACE, OUTPUTS_DIR, PROFILE, PROFILES,
+from common import (BRANCH, HERE, crm_vault_ids, INPUTS_DIR, NAMESPACE, OUTPUTS_DIR, PROFILE, PROFILES,
                     approve_tool_call, download_outputs, get_client, load_state, record_run,
                     require, save_state, session_url, sha256_of)
 
@@ -170,12 +170,14 @@ def main() -> None:
 
     print("Preparing input files...")
     resources = upload_inputs(client, state)
+    vault_ids = crm_vault_ids(client, state)  # [] unless MCP_CRM_URL is set
 
     session = client.beta.sessions.create(
         agent=coordinator["id"],
         environment_id=environment_id,
         title=f"Deal Desk: {RFP.stem} · {NAMESPACE}",
         resources=resources,
+        **({"vault_ids": vault_ids} if vault_ids else {}),
         budget={"type": "limit", "max_list_cost": {"amount": budget_cents, "currency": "USD"}},
     )
     state["last_session_id"] = session.id

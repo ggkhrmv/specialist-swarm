@@ -23,7 +23,7 @@ Usage:
     uv run python create_specialists.py
 """
 
-from common import (PROFILE, agent_metadata, agent_toolset, get_client, load_prompt,
+from common import (PROFILE, agent_metadata, agent_toolset, crm_mcp, get_client, load_prompt,
                     load_state, model_for, require, save_state, upsert_agent)
 
 READ_ONLY = ("read", "glob", "grep")
@@ -96,6 +96,7 @@ def main() -> None:
     state = load_state()
     skills = require(state, "skills", "uv run python upload_skills.py")
     saved: dict = state.setdefault("specialists", {})
+    crm = crm_mcp()  # only the Pricing Specialist gets the CRM MCP
 
     for spec in SPECIALISTS:
         owned = skills_for(spec["key"])
@@ -105,7 +106,8 @@ def main() -> None:
             description=spec["description"],
             model=model_for(spec["role"]),
             system=load_prompt(spec["key"]),
-            tools=agent_toolset(only=READ_ONLY),
+            tools=agent_toolset(only=READ_ONLY) + (crm["tools"] if spec["key"] == "pricing" else []),
+            **({"mcp_servers": crm["mcp_servers"]} if spec["key"] == "pricing" else {}),
             skills=skill_refs(spec["key"], skills),
             metadata=agent_metadata(spec["key"]),
         )

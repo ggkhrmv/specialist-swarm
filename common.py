@@ -190,6 +190,59 @@ def agent_toolset(only: tuple[str, ...] | None = None) -> list[dict]:
     }]
 
 
+# ── CRM MCP (past wins as a remote MCP server, e.g. on Render) ───────────────
+# MCP_CRM_URL is the server's /mcp endpoint; MCP_TOKEN is the bearer token (it goes
+# into a Vault at run time, never into an agent or this repo). Unset -> no CRM, and
+# the Pricing Specialist falls back to the mounted past-wins.json.
+CRM_NAME = "crm"
+
+
+def crm_url() -> str:
+    return os.environ.get("MCP_CRM_URL", "").strip()
+
+
+def crm_mcp() -> dict:
+    """Agent fields (`mcp_servers`, extra `tools`) that connect an agent to the CRM MCP.
+
+    Read-only server, so every tool is always_allow (the default policy is always_ask,
+    which would pause each call).
+    """
+    if not crm_url():
+        return {"mcp_servers": [], "tools": []}
+    return {
+        "mcp_servers": [{"type": "url", "name": CRM_NAME, "url": crm_url()}],
+        "tools": [{"type": "mcp_toolset", "mcp_server_name": CRM_NAME,
+                   "default_config": {"permission_policy": {"type": "always_allow"}}}],
+    }
+
+
+def crm_vault_ids(client: anthropic.Anthropic, state: dict) -> list[str]:
+    """Vault holding the CRM bearer token, created once per URL+token (cached in state).
+
+    The token is read from MCP_TOKEN and sent to the API; only a fingerprint of it is
+    saved locally. Vault credentials are matched to the agent's server by URL.
+    """
+    url, token = crm_url(), os.environ.get("MCP_TOKEN", "").strip()
+    if not url:
+        return []
+    if not token:
+        raise SystemExit("MCP_CRM_URL is set but MCP_TOKEN isn't. Add MCP_TOKEN to .env "
+                         "(the same value as on Render), or unset MCP_CRM_URL.")
+    fingerprint = hashlib.sha256(f"{url}\n{token}".encode()).hexdigest()
+    saved = state.get("crm_vault")
+    if saved and saved.get("fingerprint") == fingerprint:
+        return [saved["id"]]
+    vault = client.beta.vaults.create(display_name=f"CRM MCP · {NAMESPACE}",
+                                      metadata={"track": "specialist-swarm", "namespace": NAMESPACE})
+    client.beta.vaults.credentials.create(
+        vault_id=vault.id, display_name="CRM MCP bearer token",
+        auth={"type": "static_bearer", "mcp_server_url": url, "token": token})
+    state["crm_vault"] = {"id": vault.id, "fingerprint": fingerprint}
+    save_state(state)
+    print(f"  created   CRM vault {vault.id}")
+    return [vault.id]
+
+
 def multiagent_block(agent_ids: list[str], kind: str = "multiagent_20261001") -> dict:
     """The coordinator's roster.
 
