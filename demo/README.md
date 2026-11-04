@@ -143,16 +143,16 @@ them if a later run differs.
 **2-minute cut:** the 0:30 fan-out, the 2:00 seam, the docx headline and the scorecard number. The deck for it is
 [`slides.html`](slides.html): open it in a browser and use the arrow keys. Press `N` for the speaker notes with each
 slide's time slot, `T` for a rehearsal clock against 2:00, and `F` for full screen. It prints to PDF one slide per page
-as a backup. Its numbers and commercial excerpt are run 2's (table below), which ran before the deck skill was added. They're accurate for that run, but don't mix them with run 3's docx in the same talk: either present run 2's files with the slides, or refresh the slides from run 3. The diagrams were made with the `diagram-design`
+as a backup. Its numbers and commercial excerpt are run 3's (table below), so present them with run 3's docx and deck. The diagrams were made with the `diagram-design`
 skill (dark skin).
 
 | Time | Slide | The point |
 | --- | --- | --- |
 | 0:00–0:20 | 1. The asks | Acme's four demands, and which one hides a seam |
-| 0:20–0:50 | 2. How it works | Partner, four specialists in parallel, playbooks as Skills, cross-check, docx |
+| 0:20–0:50 | 2. How it works | Partner, four specialists in parallel, playbooks as Skills, cross-check, docx and deck |
 | 0:50–1:10 | 3. Live | Switch to the terminal: four `[brief →]` lines within a second, then the fan-in line |
-| 1:10–1:35 | 4. The seam (C5) | Pricing's 25% needs a 3-year commitment and Legal allows an exit at will; the partner ties the bigger discount to the commitment |
-| 1:35–2:00 | 5. Proof | 12/13 traps, 4/5 seams, $1.11, 4.3 minutes; edit a markdown file to change a rule |
+| 1:10–1:35 | 4. The seam (C5) | Pricing's 25% needs a 3-year commitment and Legal allows an exit at will; the partner keeps the exit but re-rates the fees on an exit before month 36 |
+| 1:35–2:00 | 5. Proof | 12/13 traps, 4/5 seams, $1.79, 6.3 minutes; edit a markdown file to change a rule |
 
 **Optional act: change the rule, change the answer (+2 min).** This is the strongest proof of claim 2. In a separate
 worktree, change one line of a playbook, e.g. make Net 60 acceptable for every enterprise deal in
