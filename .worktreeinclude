@@ -1,0 +1,7 @@
+# Gitignored files copied into every new worktree: by Claude Code (claude -w,
+# EnterWorktree, subagent worktrees) and by `python3 scripts/wt.py new`.
+#
+# Only the API key. NEVER add .swarm_state.json: it holds the IDs of the cloud
+# agents a checkout owns, and a copy would let a worktree update the main
+# checkout's demo swarm.
+.env

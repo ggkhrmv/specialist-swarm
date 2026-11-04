@@ -1,0 +1,12 @@
+[project]
+name = "specialist-swarm"
+version = "1.0.0"
+description = "Deal Desk: a coordinator + specialists swarm on Claude Managed Agents"
+requires-python = ">=3.10"
+dependencies = [
+    "anthropic>=2.4",       # Managed Agents multiagent_20261001, stable Skills + Files APIs
+    "python-dotenv>=1.0",   # reads .env
+]
+
+[tool.uv]
+package = false  # a set of scripts, not an installable package

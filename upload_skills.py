@@ -1,101 +1,63 @@
 """
-Upload each skill in skills/ via the Skills API and attach to the right
-specialist agent.
+Step 2 — upload the Deal Desk skills through the Skills API.
 
-Uses `files_from_dir` (from anthropic.lib) to package the skill directory.
-Each skill bundle must contain a SKILL.md at its root with proper YAML
-frontmatter (`name` and `description`).
+Only the skills an agent uses are uploaded: the keys of SKILL_OWNERS in
+create_specialists.py, which attaches each one to the specialist that owns that
+domain. The rest of skills/ (the asset-forge suite, see README) is a library for
+Claude Code and stays out of the cloud setup until someone maps it to an agent.
+
+Every checkout uploads its OWN copy of each skill and tracks its ID in
+.swarm_state.json, so a teammate editing a SKILL.md in their worktree never
+changes the skill your agents use. Display names carry the checkout's namespace
+so you can tell the copies apart in the Console (display names aren't unique).
+
+Safe to re-run: an unchanged skill is reused; a skill whose files changed gets a
+new version, which agents pinned to "latest" pick up in their next session.
 
 Usage:
-    python upload_skills.py
+    uv run python upload_skills.py
 """
 
-import json
-import os
-from pathlib import Path
-
-from anthropic import Anthropic
 from anthropic.lib import files_from_dir
 
+from common import HERE, NAMESPACE, get_client, load_state, save_state, sha256_of
+from create_specialists import SKILL_OWNERS
 
-# Map skill directory name → specialist key that should get it
-SKILL_TO_SPECIALIST = {
-    "pricing-playbook": "pricing",
-    "legal-checklist":  "legal",
-    "competitive-intel": "competitive",
-}
+SKILLS_DIR = HERE / "skills"
 
 
 def main() -> None:
-    if not os.environ.get("ANTHROPIC_API_KEY"):
-        raise SystemExit("Set ANTHROPIC_API_KEY before running.")
+    client = get_client()
+    state = load_state()
+    saved: dict = state.setdefault("skills", {})
 
-    specialist_ids_path = Path(".specialist_ids.json")
-    if not specialist_ids_path.exists():
-        raise SystemExit("Run create_specialists.py first.")
-    specialist_ids = json.loads(specialist_ids_path.read_text())
+    missing = [name for name in SKILL_OWNERS if not (SKILLS_DIR / name / "SKILL.md").exists()]
+    if missing:
+        raise SystemExit(f"SKILL_OWNERS maps skills with no skills/<name>/SKILL.md: {missing}")
 
-    client = Anthropic()
+    for name in sorted(SKILL_OWNERS):
+        skill_dir = SKILLS_DIR / name
+        digest = sha256_of(skill_dir)
+        known = saved.get(name)
 
-    # List existing custom skills so we can detect and reuse any prior uploads.
-    # Skills API enforces unique display_title, so retrying with the same title
-    # would otherwise fail. Idempotent retry is essential for hackathon dev loops.
-    print("Checking for existing skills...")
-    existing_by_title: dict[str, str] = {}
-    for page in client.beta.skills.list(source="custom"):
-        existing_by_title[page.display_name] = page.id
-
-    uploaded: dict[str, str] = {}
-
-    for skill_name, specialist_key in SKILL_TO_SPECIALIST.items():
-        skill_dir = Path("skills") / skill_name
-        if not (skill_dir / "SKILL.md").exists():
-            print(f"  Skipping {skill_name} — no SKILL.md found")
+        if known and known["sha256"] == digest:
+            print(f"  {name:20s} unchanged  ({known['id']})")
             continue
 
-        display_title = skill_name.replace("-", " ").title()
-
-        # 1. Upload the skill (or reuse if one already exists with this title)
-        if display_title in existing_by_title:
-            skill_id = existing_by_title[display_title]
-            print(f"Reusing existing skill: {skill_name} ({skill_id})")
-            uploaded[skill_name] = skill_id
+        if known:
+            client.skills.versions.create(known["id"], files=files_from_dir(str(skill_dir)))
+            skill_id = known["id"]
+            print(f"  {name:20s} new version uploaded  ({skill_id})")
         else:
-            print(f"Uploading skill: {skill_name}...")
-            skill = client.beta.skills.create(
-                display_name=display_title,
-                files=files_from_dir(str(skill_dir)),
-            )
-            uploaded[skill_name] = skill.id
-            print(f"  -> {skill.id}")
+            skill = client.skills.create(display_name=f"{name} · {NAMESPACE}",
+                                         files=files_from_dir(str(skill_dir)))
+            skill_id = skill.id
+            print(f"  {name:20s} uploaded  ({skill_id})")
 
-        # 2. Attach to the matching specialist by updating its skills array
-        specialist_id = specialist_ids[specialist_key]
-        skill_id = uploaded[skill_name]
-        print(f"  attaching to specialist `{specialist_key}` ({specialist_id})...")
+        saved[name] = {"id": skill_id, "sha256": digest}
+        save_state(state)
 
-        current = client.beta.agents.retrieve(specialist_id)
-        # Avoid duplicate attachment on re-run
-        already_attached = any(
-            s.get("skill_id") == skill_id for s in (current.skills or [])
-        )
-        if already_attached:
-            print(f"  already attached ✓ (skipping)")
-            continue
-
-        new_skills = list(current.skills or []) + [
-            {"type": "custom", "skill_id": skill_id, "version": "latest"}
-        ]
-        client.beta.agents.update(
-            specialist_id,
-            version=current.version,
-            skills=new_skills,
-        )
-        print(f"  attached ✓")
-
-    Path(".skill_ids.json").write_text(json.dumps(uploaded, indent=2))
-    print(f"\nUploaded {len(uploaded)} skills and attached them to specialists.")
-    print("Next: python run_deal_desk.py")
+    print(f"\n{len(saved)} custom skill(s) ready. Next: uv run python create_specialists.py")
 
 
 if __name__ == "__main__":
