@@ -79,6 +79,9 @@ SUBPROCESSORS = ("Vendor shall obtain Acme's prior written consent before engagi
 VENDORS = ("We are also issuing this RFP to:\n- Databricks\n- Snowflake\n- Microsoft (Fabric)\n"
            "- A regional vendor we will not name in this document")
 NO_VENDORS = "We will not disclose the other vendors invited to this RFP."
+MULTI_REGION = "- Multi-region deployment (primary EU, secondary US East)"
+REFERENCES = "- Three customer references (similar scale + Power BI + Azure)"
+GENERIC_REFERENCES = "- Three customer references (similar scale and workloads)"
 
 # An RFP whose contract terms already match our standard positions (both directions
 # for Legal and the Critic: a correct review flags nothing).
@@ -176,21 +179,26 @@ PRICING = [
         {**ACME_PRICING_GOLD, "strategic_bases": ["target_vertical"]}),
     pricing(
         "pricing-no-strategic",
-        "Manufacturing, 1-year term, no reference agreement: no strategic basis exists (at most a "
-        "reference agreement offered as a give-get), so the ceiling is the 20% standard band.",
-        variant((TERM, "We are seeking a 1-year initial term with annual renewals.")),
+        "Manufacturing, a 1-year term that procurement policy can't extend: no strategic basis exists "
+        "(at most a reference agreement offered as a give-get), so the ceiling is the 20% standard band.",
+        variant((TERM, "We are seeking a 1-year initial term with annual renewals. Our procurement policy "
+                       "does not allow multi-year commitments, so offers conditional on a longer term "
+                       "will not be considered.")),
         [("discount_ceiling", {**BAND_500K_1M, "uplift": 0, "valid_bases": ["reference_customer"]}),
          ("strategic_basis", {"valid_bases": ["reference_customer"]}),
          ("position", {"field": "customer_discount_demand", "expected": ["rejects"]})],
         {**ACME_PRICING_GOLD, "discount_pct": 20, "strategic_claimed": False, "strategic_bases": []}),
     pricing(
         "pricing-growth-tier",
-        "A smaller platform (35 TB, 22 users, 99.9% SLA) fits Growth ($360K list), the $250K-$500K "
-        "band: 15% standard, 20% strategic with the 3-year commitment.",
+        "A smaller platform (25 TB growing to ~37 TB over five years, 22 users, one region, 99.9% SLA) "
+        "fits Growth ($360K list, 50 TB / 25 users), the $250K-$500K band: 15% standard, 20% "
+        "strategic with the 3-year commitment.",
         variant((WORKLOADS, "- Batch ETL from 6 internal sources\n- BI and reporting for 18 analysts\n"
                             "- Self-service data preparation for 4 data engineers"),
-                (SCALE, "- ~35 TB current data volume\n- ~0.5 TB / month growth rate"),
+                (SCALE, "- ~25 TB current data volume\n- ~0.2 TB / month growth rate (~37 TB after "
+                        "five years)"),
                 (POWER_BI, "- Native Power BI integration (18 users)"),
+                (MULTI_REGION, "- Single-region deployment in the EU"),
                 (SLA, "Vendor must commit to 99.9% monthly uptime.")),
         [("tier", {"expected": "Growth"}),
          ("list_price", {"expected": 360000}),
@@ -355,7 +363,7 @@ TECHNICAL = [
                ("rating", {"req": "multi_region", "expected": ["full"]}),
                ("rating", {"req": "sla_9999", "expected": ["partial"]}),
                ("no_false_gaps", {"reqs": ["batch_etl", "data_prep", "ml", "scale", "lakehouse"]}),
-               ("overall_fit", {"expected": ["high"]}),
+               ("overall_fit", {"expected": ["high", "medium"]}),  # medium: the 99.99% MUST is partial
                ("top_risk", {"expected": ["sla_9999"]}),
                ("migration_weeks", {"min": 16})],
               {"substantive": True,
@@ -436,7 +444,7 @@ COMPETITIVE = [
                 variant((MICROSOFT, "We are a Google Cloud shop. BigQuery ML models and Looker dashboards are "
                                     "used across the business."),
                         (POWER_BI, "- Native Looker integration (this is non-negotiable — 600 users today)"),
-                        (VENDORS, NO_VENDORS)),
+                        (VENDORS, NO_VENDORS), (REFERENCES, GENERIC_REFERENCES)),
                 [("competitors_include", {"required": ["google_bigquery"]}),
                  ("competitors_exclude", {"forbidden": ["microsoft_fabric"]})],
                 {"substantive": True, "likely_competitors": ["google_bigquery", "databricks"],
@@ -448,7 +456,7 @@ COMPETITIVE = [
                 variant((MICROSOFT, "We already run Snowflake for finance analytics and rely on its secure "
                                     "data sharing with suppliers."),
                         (POWER_BI, "- Support for our existing BI tools (600 users today)"),
-                        (VENDORS, NO_VENDORS)),
+                        (VENDORS, NO_VENDORS), (REFERENCES, GENERIC_REFERENCES)),
                 [("competitors_include", {"required": ["snowflake"]}),
                  ("competitors_exclude", {"forbidden": ["google_bigquery"]})],
                 {"substantive": True, "likely_competitors": ["snowflake", "databricks"],
@@ -459,7 +467,7 @@ COMPETITIVE = [
                 variant((MICROSOFT, "Our data engineering team is standardising on MLflow for model "
                                     "tracking and Delta tables for the lakehouse."),
                         (POWER_BI, "- Support for our existing BI tools (600 users today)"),
-                        (VENDORS, NO_VENDORS)),
+                        (VENDORS, NO_VENDORS), (REFERENCES, GENERIC_REFERENCES)),
                 [("competitors_include", {"required": ["databricks"]}),
                  ("competitors_exclude", {"forbidden": ["google_bigquery"]})],
                 {"substantive": True, "likely_competitors": ["databricks"],

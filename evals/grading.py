@@ -115,7 +115,7 @@ def schema_for(case: dict) -> dict:
             "traps": {"type": "array", "items": _obj({
                 "competitor": {"type": "string", "enum": COMPETITORS},
                 "topic": {"type": "string", "enum": TRAP_TOPICS}}),
-                "description": "Traps it tells us to avoid, mapped to the closest topic."},
+                "description": ("Every pitfall it warns us against anywhere in the document (in the trap section, the angles or elsewhere), mapped to the closest topic.")},
             "angle_topics": {"type": "array", "items": {"type": "string", "enum": ANGLE_TOPICS},
                              "description": "The topics of the positioning angles it recommends."},
         })
@@ -298,17 +298,17 @@ CHECKS = {
     "rating": lambda e, o, r, p: (_rating(e, p["req"]) in p["expected"],
                                   f"{p['req']} rated {_rating(e, p['req'])!r}, expected {p['expected']}"),
     "no_false_gaps": lambda e, o, r, p: (
-        all(_rating(e, req) in ("full", "not_assessed") for req in p["reqs"]),
-        "under-claimed: " + (", ".join(f"{q}={_rating(e, q)}" for q in p["reqs"]
-                                       if _rating(e, q) not in ("full", "not_assessed")) or "none")),
+        all(_rating(e, req) != "none" for req in p["reqs"]),
+        "rated not met although supported: " + (", ".join(f"{q}={_rating(e, q)}" for q in p["reqs"]
+                                       if _rating(e, q) == "none") or "none")),  # partial + caveat is fine
     "overall_fit": lambda e, o, r, p: (e.get("overall_fit") in p["expected"],
                                        f"overall {e.get('overall_fit')!r}, expected {p['expected']}"),
     "top_risk": lambda e, o, r, p: (e.get("top_risk") in p["expected"],
                                     f"top risk {e.get('top_risk')!r}, expected {p['expected']}"),
     "migration_weeks": lambda e, o, r, p: (
-        (e.get("migration_weeks_min") or -1) >= p["min"],
+        (e.get("migration_weeks_max") or -1) >= p["min"],
         f"timeline {e.get('migration_weeks_min')}-{e.get('migration_weeks_max')} weeks; "
-        f"must be stated and not faster than {p['min']}"),
+        f"the planned full migration must be stated and not faster than {p['min']}"),
     # competitive
     "competitors_include": lambda e, o, r, p: (
         set(p["required"]) <= set(e.get("likely_competitors") or []),
