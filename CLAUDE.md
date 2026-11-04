@@ -6,12 +6,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 A hackathon build of **Partner Basecamp Option 3, Scenario Card A: Deal Desk**, made by four people working in parallel. A
 "Senior Partner" coordinator agent reads the Acme Corp RFP (`synthetic-data/rfp-acme-corp.md`), briefs four specialist
-sub-agents in parallel, and turns their reports into a branded `proposal-response.docx`. It runs on **Claude Managed
+sub-agents in parallel, and turns their reports into a branded `proposal-response.docx` plus a 5-slide HTML
+`pitch-deck.html` (stretch S7). It runs on **Claude Managed
 Agents** (multiagent sessions + Skills). Cards B and C in `scenario-cards.md` are out of scope.
 
 | Agent | Prompt | Skill | Model (demo / dev) |
 | --- | --- | --- | --- |
-| Deal Desk Senior Partner (coordinator) | `prompts/coordinator.md` | Anthropic `docx` + `positioning`, `storyline`, `voice` | Opus 5.5 / Sonnet 5.5 |
+| Deal Desk Senior Partner (coordinator) | `prompts/coordinator.md` | Anthropic `docx` + `positioning`, `storyline`, `voice`, `deal-deck` | Opus 5.5 / Sonnet 5.5 |
 | Pricing Specialist | `prompts/pricing.md` | `pricing-playbook` (+ mounted `past-wins.json`) | Sonnet 5.5 / Haiku 5.5 |
 | Legal Reviewer | `prompts/legal.md` | `legal-checklist` | Sonnet 5.5 / Haiku 5.5 |
 | Technical Fit Specialist | `prompts/technical_fit.md` | `product-overview` + `positioning` | Sonnet 5.5 / Haiku 5.5 |
@@ -59,6 +60,10 @@ There is no linter or unit-test suite; `tests/offline_check.py` is the gate.
   `storyline`, `voice`, `asset-review`). The rest stay a library for Claude Code: `asset-forge` waits for human
   sign-offs at its gates, and the others don't apply to a docx deliverable. Skill descriptions must be ≤ 1024
   characters to upload.
+- **`deal-deck`** (coordinator) is self-contained on purpose: the brand tokens, embedded fonts (OFL) and presenter
+  script live in `assets/shell.html`, and the coordinator writes only `<section class="slide">` content, which
+  `scripts/build_deck.py` wraps, inlines and gates (no raw colours, external URLs, `<style>` or `<script>`). To
+  preview a change locally, build `examples/example-slides.html` with that script (the offline check does too).
 - **Runtime data flow:** the RFP and `past-wins.json` are uploaded once (cached by content hash) and mounted read-only
   at `/mnt/session/uploads/inputs/`. All threads share that container's filesystem but **not** conversation history,
   so every brief must carry file paths. The deliverable must be written to `/mnt/session/outputs/`, the only directory
@@ -127,6 +132,7 @@ There is no linter or unit-test suite; `tests/offline_check.py` is the gate.
 1. After the last merge, in the main checkout: `git pull`, then `uv run python setup_swarm.py` (the `demo` profile on
    `main`).
 2. Do one full rehearsal with `uv run python run_deal_desk.py`. Keep a copy of the best `outputs/proposal-response.docx`
-   outside `outputs/`, because the next run overwrites it.
-3. Use two screens: the terminal event stream (`[brief →]` × 4 in parallel, then `[report ←]`) and the docx. Keep the
-   Console trace URL open to show the specialist threads.
+   and `outputs/pitch-deck.html` outside `outputs/`, because the next run overwrites them.
+3. Use two screens: the terminal event stream (`[brief →]` × 4 in parallel, then `[report ←]`) and the docx, then the
+   deck in a browser (`F` for full screen, arrow keys to step, `N` for notes). Keep the Console trace URL open to show
+   the specialist threads.

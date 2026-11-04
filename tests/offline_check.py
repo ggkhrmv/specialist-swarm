@@ -12,6 +12,7 @@ What it covers:
   instructions, --rfp / --no-memory, outcomes created then replaced),
 - the critic stretch (roster grows, prompt gains the critic section),
 - the fallback to the older `coordinator` multiagent type,
+- the deal-deck skill: its example builds through its own gates, and bad slides fail,
 - every request's arguments checked against the installed anthropic SDK's type
   hints, so API drift (renamed fields, wrong shapes) fails here instead of costing
   a real run.
@@ -25,6 +26,7 @@ import inspect
 import io
 import os
 import re
+import subprocess
 import sys
 import tempfile
 import traceback
@@ -203,6 +205,7 @@ class FakeClient:
                 return Obj(data=[
                     Obj(id="file_in", filename="rfp-acme-corp.md", downloadable=False),
                     Obj(id="file_out", filename="proposal-response.docx", downloadable=True),
+                    Obj(id="file_deck", filename="pitch-deck.html", downloadable=True),
                 ])
 
             def download(self, file_id):
@@ -309,6 +312,32 @@ def use(client: FakeClient, tmp: Path, tag: str) -> None:
     common.RUNS_LOG = tmp / f"runs-{tag}.jsonl"
 
 
+def check_deal_deck(tmp: Path) -> None:
+    """Build the skill's example with its own script, as the coordinator would."""
+    skill = REPO / "skills" / "deal-deck"
+    script = skill / "scripts" / "build_deck.py"
+
+    def build(slides: Path, out: Path) -> subprocess.CompletedProcess:
+        return subprocess.run([sys.executable, "-I", str(script), str(slides), str(out),
+                               "--title", "Offline check", "--context", "Offline check"],
+                              capture_output=True, text=True, timeout=60)
+
+    out = tmp / "deck" / "pitch-deck.html"
+    result = build(skill / "examples" / "example-slides.html", out)
+    print(result.stdout + result.stderr)
+    assert result.returncode == 0 and "deck OK" in result.stdout, "example deck failed its gates"
+    built = out.read_text()
+    assert "{{" not in built and built.count("@font-face") == 7
+    assert "https://" not in built and "http://" not in built, "deck is not self-contained"
+
+    # The gates must bite: a raw colour and a missing slide both fail the build.
+    bad = tmp / "deck" / "bad-slides.html"
+    bad.write_text('<section class="slide"><h2 class="title" style="color:#ff0000">x</h2></section>')
+    result = build(bad, tmp / "deck" / "bad.html")
+    assert result.returncode == 1 and "raw hex colour" in result.stdout and "expected 5" in result.stdout, \
+        result.stdout
+
+
 def main() -> None:
     sys.stdin = io.StringIO()  # no TTY: paused tool calls must be denied
     tmp = Path(tempfile.mkdtemp(prefix="swarm-offline-"))
@@ -357,12 +386,14 @@ def main() -> None:
     assert coordinator["skills"][0] == {"type": "anthropic", "skill_id": "docx"}
     assert len(coordinator["skills"]) == 1 + len(create_specialists.skills_for("coordinator"))
     assert all(s["type"] == "custom" for s in coordinator["skills"][1:])
+    assert "deal-deck" in create_specialists.skills_for("coordinator")
     assert coordinator["multiagent"]["type"] == "multiagent_20261001"
     assert len(coordinator["multiagent"]["subagents"]["predefined_agents"]) == n_specialists
     assert coordinator["model"] == {"id": "claude-sonnet-5-5", "effort": "medium"}  # dev profile
     assert coordinator["metadata"]["namespace"] == "offline-check"
     system = coordinator["system"]
     assert "{{" not in system and "# Workflow runs" in system and "# Critic review" not in system
+    assert f"{common.OUTPUTS_DIR}/pitch-deck.html" in system, "coordinator prompt lost the deck step"
     assert all(f"- {n}:" in system for n in names), "roster lines missing from coordinator prompt"
     for spec, cfg in zip(create_specialists.SPECIALISTS, creates):
         assert cfg["system"] == common.load_prompt(spec["key"]), spec["key"]
@@ -384,6 +415,8 @@ def main() -> None:
     outputs = common.LOCAL_OUTPUTS
     assert (outputs / "coordinator-transcript.md").read_text() == "Proposal saved."
     assert (outputs / "proposal-response.docx").exists()
+    assert (outputs / "pitch-deck.html").exists()
+    assert "pitch-deck.html" in fake.sent[0]["content"][0]["text"], "kickoff lost the deck"
     uploads = len(fake.of("files.upload"))
     step("run_deal_desk (second run reuses uploads)", run_deal_desk.main)
     assert len(fake.of("files.upload")) == uploads == len(run_deal_desk.input_files())
@@ -469,6 +502,9 @@ def main() -> None:
     assert common.model_for("coordinator") == "claude-opus-5-5"
     assert common.model_for("specialist") == "claude-sonnet-5-5"
     common.PROFILE = "dev"
+
+    # 6. The deal-deck skill builds its own example, and its gates reject bad slides.
+    step("deal-deck builds the example deck", lambda: check_deal_deck(tmp))
 
     if PROBLEMS:
         print("\nREQUEST SHAPE PROBLEMS (would fail against the real API):")
