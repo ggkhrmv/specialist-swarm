@@ -91,6 +91,7 @@ def check(slides_html: str, expected: int) -> tuple[list[str], list[str]]:
                 errors.append(f"slide {i}: a diagram <svg> needs a viewBox")
 
     rules = [
+        (r"\b(?:animation|transition)\s*:|<animate", "animation (charts are static: draw marks at their final size)"),
         (r"(?:src|href)\s*=\s*\"(?:https?:)?//", "external src/href (the deck must be self-contained)"),
         (r"url\(\s*['\"]?(?:https?:)?//", "external url() reference"),
         (r"@import", "@import"),

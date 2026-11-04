@@ -79,8 +79,7 @@ The brand is fixed. You choose content and composition, not colours or type.
   slide** (our dot on the quadrant, the offered fee bar, the current step). Using it on
   more erases the signal.
 - **Use the shell's classes; never write a colour.** The build fails on any hex, `rgb()`,
-  `<style>`, inline `font-family`, `box-shadow`, `<img>`, external URL or emoji. Inline
-  `style` is fine for layout custom properties such as `style="--i:2"`.
+  `<style>`, inline `font-family`, `box-shadow`, `<img>`, external URL or emoji.
 - **One inverse tile per slide** at most (`.kpi--inverse` or `.inverse`). The cover is
   the deck's only gradient.
 - **Icons** come from the sprite only: `<svg class="icon" aria-hidden="true"><use href="#i-check"/></svg>`.
@@ -118,8 +117,8 @@ sublabels), `dg-label` / `dg-axis` (14px mono), `dg-value` (34px serif figures),
 `dg-value--focal`. Shapes `dg-box` (`--brand`, `--focal`, `--quiet`), `dg-area` (a brand
 tint region), `dg-grid`, `dg-baseline`, `dg-zone`, `dg-line` (`--focal`, `--brand`,
 `--dash`), `dg-bar` (`--light`, `--quiet`, `--focal`), `dg-dot` (`--quiet`, `--focal`).
-Arrowheads: `marker-end="url(#dg-arrow)"` or `url(#dg-arrow-focal)`. Add `grow` to
-bars, plus `style="--i:N"` for the stagger, and they build up when the slide opens.
+Arrowheads: `marker-end="url(#dg-arrow)"` or `url(#dg-arrow-focal)`. Charts are
+static: draw every mark at its final size, with no animation classes or transforms.
 
 **Layout discipline:**
 - Density 4 out of 10: at most 9 nodes or bars and 2 focal elements. Every element must
@@ -152,7 +151,7 @@ label. Keep every label inside its own quadrant. Axes must be criteria the RFP a
 weights, and the source line must say the positions are our assessment.
 
 **Other forms** that fit the shell: a horizontal bar chart of requirement coverage or
-evaluation criteria (`grow-x` bars, labels left, values right), or a timeline of
+evaluation criteria (bars from a shared left baseline, labels left, values right), or a timeline of
 milestones (a `dg-baseline` with `dg-dot`s, labels alternating above and below).
 
 ## Before you finish

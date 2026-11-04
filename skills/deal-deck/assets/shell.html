@@ -57,7 +57,6 @@
   --corner: 2px;
   --hairline: 1px solid var(--rule);
   --dur-fast: 160ms;
-  --dur-grow: 700ms;
   --ease: cubic-bezier(.2, .7, .2, 1);
 
   --slide-w: 1600px;
@@ -231,15 +230,7 @@ strong { font-weight: 600; color: var(--ink); }
 .dg-marker       { fill: var(--muted); }
 .dg-marker--focal { fill: var(--accent); }
 
-/* The one orchestrated moment: bars and lines grow when their slide opens */
-   (the resting state is always the complete chart, so print and no-JS views are whole) */
-.dg .grow, .dg .grow-x { transform-box: fill-box; }
-.dg .grow   { transform-origin: 50% 100%; }
-.dg .grow-x { transform-origin: 0 50%; }
-.slide.is-active .dg .grow   { animation: grow-y var(--dur-grow) var(--ease) both; animation-delay: calc(var(--i, 0) * 120ms); }
-.slide.is-active .dg .grow-x { animation: grow-x var(--dur-grow) var(--ease) both; animation-delay: calc(var(--i, 0) * 120ms); }
-@keyframes grow-y { from { transform: scaleY(0); } to { transform: scaleY(1); } }
-@keyframes grow-x { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+/* Charts are static on purpose: every view (live, print, no-JS) shows the complete chart. */
 
 /* ── Cover: the deck's one gradient surface ── */
 .slide--cover {
@@ -294,7 +285,6 @@ body.notes-open .controls { bottom: calc(180px + var(--s-4)); }
 
 @media (prefers-reduced-motion: reduce) {
   .controls { transition: none; }
-  .slide.is-active .dg .grow, .slide.is-active .dg .grow-x { animation: none; }
 }
 
 /* ── Print / Save as PDF: one slide per page, no scaling ── */
@@ -304,7 +294,6 @@ body.notes-open .controls { bottom: calc(180px + var(--s-4)); }
   .deck { position: static; }
   .slide, .js .slide { position: relative; left: auto; top: auto; transform: none; visibility: visible; break-after: page; }
   .slide:last-of-type { break-after: auto; }
-  .slide.is-active .dg .grow, .slide.is-active .dg .grow-x { animation: none; }
   .controls, .notes-panel { display: none !important; }
   * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 }

@@ -415,12 +415,23 @@ def check_deal_deck(tmp: Path) -> None:
     assert "{{" not in built and built.count("@font-face") == 7
     assert "https://" not in built and "http://" not in built, "deck is not self-contained"
 
-    # The gates must bite: a raw colour and a missing slide both fail the build.
+    # Every CSS comment in the shell is closed exactly once. A stray "*/" turns the text
+    # before it into a bogus selector that silently drops the next rule.
+    css = built[built.index("<style>"):built.index("</style>")]
+    depth = 0
+    for mark in re.findall(r"/\*|\*/", css):
+        depth += 1 if mark == "/*" else -1
+        assert depth in (0, 1), "unbalanced CSS comment in skills/deal-deck/assets/shell.html"
+    assert depth == 0, "unclosed CSS comment in skills/deal-deck/assets/shell.html"
+    assert "@keyframes" not in css, "deck charts must stay static"
+
+    # The gates must bite: a raw colour, an animation and a missing slide all fail the build.
     bad = tmp / "deck" / "bad-slides.html"
-    bad.write_text('<section class="slide"><h2 class="title" style="color:#ff0000">x</h2></section>')
+    bad.write_text('<section class="slide"><h2 class="title" style="color:#ff0000">x</h2>'
+                   '<p style="animation: spin 1s">y</p></section>')
     result = build(bad, tmp / "deck" / "bad.html")
-    assert result.returncode == 1 and "raw hex colour" in result.stdout and "expected 5" in result.stdout, \
-        result.stdout
+    assert (result.returncode == 1 and "raw hex colour" in result.stdout
+            and "animation" in result.stdout and "expected 5" in result.stdout), result.stdout
 
 
 def main() -> None:
