@@ -1,0 +1,458 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Deal Desk swarm: the final readout</title>
+  <!-- Fonts from Google Fonts; offline, the system fallbacks take over. -->
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    /* Skin: diagram-design dark editorial, the same tokens as demo/slides.html. */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --paper: #2d3142; --paper-2: #393e53; --ink: #f5f5f5; --muted: #bfc0c0; --soft: #949eb2;
+      --rule: rgba(245,245,245,0.12); --accent: #f08a59; --accent-tint: rgba(240,138,89,0.10);
+      --font-sans: 'Geist', system-ui, sans-serif;
+      --font-serif: 'Instrument Serif', Georgia, serif;
+      --font-mono: 'Geist Mono', ui-monospace, Menlo, monospace;
+    }
+    html, body { height: 100%; background: var(--paper); color: var(--ink); font-family: var(--font-sans); overflow: hidden; }
+    #viewport { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; }
+    #stage { width: 1280px; height: 720px; position: relative; transform-origin: center center; flex: none; }
+    .slide { position: absolute; inset: 0; padding: 36px 40px 0; display: none; }
+    .slide.active { display: block; }
+    .eyebrow { font-family: var(--font-mono); font-size: 13px; font-weight: 500; letter-spacing: 0.18em; text-transform: uppercase; color: var(--soft); }
+    h1 { font-family: var(--font-serif); font-weight: 400; font-size: 40px; line-height: 1.12; letter-spacing: -0.02em; margin-top: 10px; }
+    h1 em { color: var(--accent); font-style: italic; }
+    .lede { font-size: 20px; line-height: 1.45; color: var(--muted); max-width: 1040px; margin-top: 16px; }
+    .lede b { color: var(--ink); font-weight: 600; }
+    .mono { font-family: var(--font-mono); }
+    footer { position: absolute; left: 40px; right: 40px; bottom: 22px; display: flex; justify-content: space-between;
+             font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.08em; color: var(--soft); }
+    .source { font-family: var(--font-mono); font-size: 11px; color: var(--soft); margin-top: 14px; letter-spacing: 0.04em; }
+    .kicker { font-family: var(--font-serif); font-style: italic; font-size: 28px; line-height: 1.25; margin-top: 30px; }
+
+    /* 1. Title */
+    .title-wrap { position: absolute; left: 40px; right: 40px; top: 150px; }
+    .title-wrap h1 { font-size: 76px; line-height: 1.02; max-width: 1080px; }
+    .title-wrap .lede { font-size: 22px; margin-top: 28px; max-width: 900px; }
+    .tags { display: flex; gap: 10px; margin-top: 40px; flex-wrap: wrap; }
+    .tag { font-family: var(--font-mono); font-size: 13px; letter-spacing: 0.06em; color: var(--muted);
+           border: 1px solid var(--rule); border-radius: 2px; padding: 6px 10px; }
+    .tag.on { color: var(--accent); border-color: var(--accent); }
+
+    /* Tables */
+    table.t { margin-top: 30px; border-collapse: collapse; width: 1200px; }
+    .t th { text-align: left; font-family: var(--font-mono); font-size: 12px; font-weight: 500; letter-spacing: 0.14em;
+            text-transform: uppercase; color: var(--soft); padding: 0 16px 12px 0; border-bottom: 1px solid var(--rule); }
+    .t td { font-size: 19px; padding: 14px 16px 14px 0; border-bottom: 1px solid var(--rule); vertical-align: baseline; line-height: 1.35; }
+    .t td.k { font-weight: 600; width: 330px; }
+    .t td.sec { font-family: var(--font-mono); font-size: 14px; color: var(--soft); width: 150px; white-space: nowrap; }
+    .t td.v { color: var(--muted); }
+    .t tr.seam td.k { color: var(--accent); }
+
+    /* Diagram slide */
+    .diagram { margin-top: 18px; overflow-x: auto; }
+    .diagram svg { display: block; width: 1200px; min-width: 1200px; height: auto; }
+
+    /* Stats */
+    .stats { display: grid; grid-template-columns: 1.3fr 1.05fr 0.9fr 0.9fr; gap: 16px; margin-top: 34px; }
+    .stat { border: 1px solid var(--rule); border-radius: 6px; padding: 22px 24px 20px; }
+    .stat.focal { border-color: var(--accent); background: var(--accent-tint); }
+    .stat .n { font-family: var(--font-serif); font-size: 72px; line-height: 1; letter-spacing: -0.02em; }
+    .stat.focal .n { color: var(--accent); }
+    .stat .l { font-size: 16px; color: var(--muted); margin-top: 10px; line-height: 1.35; }
+    .stat .l b { color: var(--ink); font-weight: 600; }
+
+    /* Terminal excerpt */
+    .term { margin-top: 26px; border: 1px solid var(--rule); border-radius: 6px; background: #1f2230; padding: 18px 22px;
+            font-family: var(--font-mono); font-size: 15px; line-height: 1.7; color: var(--muted); }
+    .term .hi { color: var(--accent); }
+    .term .ok { color: var(--ink); }
+
+    /* Proof grid: runs x traps */
+    .grid { margin-top: 30px; display: grid; grid-template-columns: 210px repeat(13, 1fr) 150px; gap: 6px; align-items: center; }
+    .grid .h { font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.08em; color: var(--soft); text-align: center; }
+    .grid .h.seam { color: var(--accent); }
+    .grid .run { font-size: 16px; font-weight: 600; }
+    .grid .run span { display: block; font-family: var(--font-mono); font-size: 11px; font-weight: 400; color: var(--soft); margin-top: 3px; }
+    .cell { height: 34px; border-radius: 2px; border: 1px solid var(--rule); }
+    .cell.y { background: rgba(245,245,245,0.78); border-color: transparent; }
+    .cell.p { background: repeating-linear-gradient(135deg, rgba(245,245,245,0.45) 0 4px, transparent 4px 8px); }
+    .cell.n { background: transparent; border: 1px solid var(--accent); }
+    .grid .score { font-family: var(--font-serif); font-size: 30px; text-align: right; }
+    .grid .score small { font-family: var(--font-mono); font-size: 11px; color: var(--soft); display: block; }
+    .legend { display: flex; gap: 26px; margin-top: 18px; font-family: var(--font-mono); font-size: 12px; color: var(--soft); align-items: center; }
+    .legend i { display: inline-block; width: 18px; height: 12px; border-radius: 2px; margin-right: 8px; vertical-align: -1px; }
+    .split { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; margin-top: 24px; }
+    .split p { font-size: 18px; line-height: 1.45; color: var(--muted); }
+    .split p b { color: var(--ink); font-weight: 600; }
+
+    /* Evals pipeline */
+    .flow { display: grid; grid-template-columns: 1fr 28px 1fr 28px 1fr 28px 1fr; align-items: stretch; margin-top: 30px; }
+    .step { border: 1px solid var(--rule); border-radius: 6px; padding: 16px 18px; background: var(--paper-2); }
+    .step.focal { border-color: var(--accent); background: var(--accent-tint); }
+    .step .tg { font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.14em; color: var(--soft); text-transform: uppercase; }
+    .step .nm { font-size: 18px; font-weight: 600; margin-top: 8px; }
+    .step .sb { font-family: var(--font-mono); font-size: 12px; color: var(--muted); margin-top: 8px; line-height: 1.5; }
+    .arr { display: flex; align-items: center; justify-content: center; color: var(--soft); font-size: 20px; }
+
+    /* Team */
+    .cols { display: grid; grid-template-columns: 1.1fr 0.9fr; gap: 44px; margin-top: 30px; }
+    .list li { list-style: none; font-size: 18px; line-height: 1.4; padding: 11px 0; border-top: 1px solid var(--rule); color: var(--muted); }
+    .list li:first-child { border-top: 0; }
+    .list li b { color: var(--ink); font-weight: 600; }
+    .list code, .split code { font-family: var(--font-mono); font-size: 14px; color: var(--ink); background: rgba(245,245,245,0.06); padding: 1px 6px; border-radius: 2px; }
+    .box { border: 1px solid var(--rule); border-radius: 6px; padding: 20px 24px; }
+    .box h2 { font-family: var(--font-mono); font-size: 12px; font-weight: 500; letter-spacing: 0.16em; text-transform: uppercase; color: var(--soft); margin-bottom: 8px; }
+    .box .n { font-family: var(--font-serif); font-size: 64px; line-height: 1; }
+    .box .l { color: var(--muted); font-size: 16px; margin-top: 6px; }
+    .box + .box { margin-top: 14px; }
+
+    /* Speaker notes (N) and rehearsal clock (T) */
+    #notes { position: fixed; left: 0; right: 0; bottom: 0; background: #1f2230; border-top: 1px solid var(--accent);
+             padding: 14px 24px 16px; font-size: 16px; line-height: 1.5; color: var(--ink); display: none; z-index: 5; }
+    #notes .t { font-family: var(--font-mono); font-size: 13px; color: var(--accent); margin-right: 10px; }
+    #notes.on { display: block; }
+    aside.note { display: none; }
+    #clock { position: fixed; top: 10px; right: 14px; font-family: var(--font-mono); font-size: 13px; color: var(--soft); display: none; z-index: 6; }
+    #clock.on { display: block; }
+    #clock.over { color: var(--accent); }
+
+    @media print {
+      @page { size: 1280px 720px; margin: 0; }
+      html, body { overflow: visible; height: auto; }
+      #viewport { position: static; display: block; }
+      #stage { transform: none !important; width: 1280px; height: auto; }
+      .slide { display: block !important; position: relative; height: 720px; page-break-after: always; break-after: page; }
+      #notes, #clock { display: none !important; }
+    }
+  </style>
+</head>
+<body>
+<div id="viewport"><div id="stage">
+
+  <!-- ───────────────────────── 1. Title ───────────────────────── -->
+  <section class="slide active" data-time="0:00–0:30">
+    <p class="eyebrow">Partner Basecamp · Option 3, Card A · final readout</p>
+    <div class="title-wrap">
+      <h1>One partner, four specialists, <em>one</em> proposal that holds up</h1>
+      <p class="lede">A Deal Desk swarm on Claude Managed Agents. It reads a hostile RFP, applies the firm's own playbooks, and delivers a branded proposal and pitch deck in about seven minutes, for under two dollars.</p>
+      <div class="tags">
+        <span class="tag on">13 traps planted</span>
+        <span class="tag">4 parallel specialists</span>
+        <span class="tag">27 eval cases</span>
+        <span class="tag">16 merged PRs</span>
+        <span class="tag">4 people, 1 day</span>
+      </div>
+    </div>
+    <footer><span>BTS-Synthetic Deal Desk</span><span>1 / 9</span></footer>
+    <aside class="note">One partner, four specialists, one proposal. Over the next seven minutes: the problem, how the swarm is built, what it produced on the Acme RFP, how we know the answers are right, and how four of us shipped it in a day.</aside>
+  </section>
+
+  <!-- ───────────────────────── 2. Problem ───────────────────────── -->
+  <section class="slide" data-time="0:30–1:15">
+    <p class="eyebrow">The problem</p>
+    <h1>The Acme RFP hides 13 traps, and five of them sit <em>between</em> teams</h1>
+    <table class="t">
+      <thead><tr><th>Acme asks for</th><th>RFP §</th><th>Only visible when you read</th></tr></thead>
+      <tbody>
+        <tr class="seam"><td class="k">Exit any time, 30 days, no fees</td><td class="sec">3.5 · C5</td><td class="v">Legal × Pricing: it voids the 3-year commitment the discount pays for</td></tr>
+        <tr class="seam"><td class="k">99.99% uptime</td><td class="sec">4.3 · C8</td><td class="v">Technical Fit × Pricing: active-active at $80–120K a year has to be priced</td></tr>
+        <tr class="seam"><td class="k">Terminate on any SLA miss</td><td class="sec">4.3 · C9</td><td class="v">Legal × Technical Fit: service credits as the sole remedy</td></tr>
+        <tr class="seam"><td class="k">All work product vests in Acme</td><td class="sec">4.4 · C10</td><td class="v">Legal × Pricing's data: the Stark licence-back precedent</td></tr>
+        <tr class="seam"><td class="k">Power BI non-negotiable, Fabric bidding</td><td class="sec">2.3 · C12</td><td class="v">Competitive × Technical Fit: reframe "free with E5" as TCO</td></tr>
+      </tbody>
+    </table>
+    <p class="kicker">Plus eight single-lane traps: 35% off, no escalators, Net 90, MFN, uncapped liability, no-notice audits, subprocessor veto, Teradata timeline.</p>
+    <footer><span>Answer key: demo/README.md</span><span>2 / 9</span></footer>
+    <aside class="note">The RFP collides with our playbooks thirteen times. Eight of those a single reviewer catches. Five only show up when two lanes read each other's work, and in a normal deal review nobody owns those seams. That's what the partner is for.</aside>
+  </section>
+
+  <!-- ───────────────────────── 3. Architecture ───────────────────────── -->
+  <section class="slide" data-time="1:15–2:15">
+    <p class="eyebrow">How it's built</p>
+    <h1>A coordinator briefs four specialists <em>in parallel</em> in one shared container</h1>
+    <div class="diagram">
+      <svg viewBox="0 0 1200 508" role="img" aria-labelledby="final-arch-title final-arch-desc">
+        <title id="final-arch-title">Deal Desk swarm architecture</title>
+        <desc id="final-arch-desc">A Senior Partner coordinator on Claude Managed Agents reads the mounted RFP, briefs Pricing, Legal, Technical Fit and Competitive Intel in parallel, and writes the proposal docx and pitch deck.</desc>
+        <defs>
+          <marker id="fa-arrow" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#bfc0c0"/></marker>
+          <marker id="fa-arrow-accent" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#f08a59"/></marker>
+        </defs>
+        <rect width="1200" height="508" fill="#2d3142"/>
+
+        <!-- zone: the session container -->
+        <rect x="8" y="8" width="944" height="420" rx="8" fill="rgba(245,245,245,0.02)" stroke="rgba(245,245,245,0.16)" stroke-width="0.8" stroke-dasharray="5,4"/>
+        <rect x="24" y="12" width="388" height="16" rx="2" fill="#2d3142"/>
+        <text x="32" y="24" fill="#949eb2" font-size="11" font-family="'Geist Mono', monospace" letter-spacing="0.14em">MANAGED AGENTS SESSION · ONE SHARED CONTAINER</text>
+
+        <!-- arrows (drawn before nodes) -->
+        <line x1="240" y1="224" x2="298" y2="224" stroke="#bfc0c0" stroke-width="1.2" marker-end="url(#fa-arrow)"/>
+        <path d="M520,154 H572 Q580,154 580,146 V94 Q580,86 588,86 H638" fill="none" stroke="#bfc0c0" stroke-width="1.2" marker-end="url(#fa-arrow)"/>
+        <line x1="520" y1="176" x2="638" y2="176" stroke="#bfc0c0" stroke-width="1.2" marker-end="url(#fa-arrow)"/>
+        <line x1="520" y1="266" x2="638" y2="266" stroke="#bfc0c0" stroke-width="1.2" marker-end="url(#fa-arrow)"/>
+        <path d="M520,294 H572 Q580,294 580,302 V348 Q580,356 588,356 H638" fill="none" stroke="#bfc0c0" stroke-width="1.2" marker-end="url(#fa-arrow)"/>
+        <path d="M410,314 V444 Q410,452 418,452 H1092 Q1100,452 1100,444 V316" fill="none" stroke="#f08a59" stroke-width="1.4" marker-end="url(#fa-arrow-accent)"/>
+
+        <!-- arrow labels -->
+        <rect x="534" y="212" width="92" height="18" rx="2" fill="#2d3142"/>
+        <text x="580" y="225" fill="#bfc0c0" font-size="11" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">4 BRIEFS</text>
+        <rect x="680" y="430" width="176" height="16" rx="2" fill="#2d3142"/>
+        <text x="768" y="442" fill="#f08a59" font-size="11" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">WRITES DOCX + DECK</text>
+
+        <!-- input node -->
+        <rect x="40" y="184" width="200" height="80" rx="6" fill="#2d3142"/>
+        <rect x="40" y="184" width="200" height="80" rx="6" fill="rgba(245,245,245,0.03)" stroke="#949eb2" stroke-width="1" stroke-dasharray="4,3"/>
+        <text x="56" y="210" fill="#f5f5f5" font-size="15" font-weight="600" font-family="'Geist', sans-serif">Mounted inputs</text>
+        <text x="56" y="230" fill="#bfc0c0" font-size="11" font-family="'Geist Mono', monospace">rfp-acme-corp.md</text>
+        <text x="56" y="246" fill="#bfc0c0" font-size="11" font-family="'Geist Mono', monospace">past-wins.json · read-only</text>
+
+        <!-- coordinator (focal) -->
+        <rect x="300" y="134" width="220" height="180" rx="6" fill="#2d3142"/>
+        <rect x="300" y="134" width="220" height="180" rx="6" fill="rgba(240,138,89,0.10)" stroke="#f08a59" stroke-width="1.4"/>
+        <rect x="316" y="148" width="96" height="16" rx="2" fill="none" stroke="#f08a59" stroke-width="0.8"/>
+        <text x="364" y="160" fill="#f08a59" font-size="10" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.12em">COORDINATOR</text>
+        <text x="316" y="192" fill="#f5f5f5" font-size="18" font-weight="600" font-family="'Geist', sans-serif">Senior Partner</text>
+        <text x="316" y="214" fill="#bfc0c0" font-size="11" font-family="'Geist Mono', monospace">claude-opus-5-5</text>
+        <text x="316" y="240" fill="#bfc0c0" font-size="11" font-family="'Geist Mono', monospace">docx · deal-deck</text>
+        <text x="316" y="256" fill="#bfc0c0" font-size="11" font-family="'Geist Mono', monospace">positioning · storyline</text>
+        <text x="316" y="272" fill="#bfc0c0" font-size="11" font-family="'Geist Mono', monospace">voice</text>
+        <text x="316" y="298" fill="#949eb2" font-size="11" font-family="'Geist Mono', monospace">briefs · cross-checks · writes</text>
+
+        <!-- specialists -->
+        <g font-family="'Geist', sans-serif">
+          <rect x="640" y="54" width="280" height="64" rx="6" fill="#393e53" stroke="rgba(245,245,245,0.30)" stroke-width="1"/>
+          <text x="656" y="80" fill="#f5f5f5" font-size="15" font-weight="600">Pricing</text>
+          <text x="656" y="100" fill="#bfc0c0" font-size="11" font-family="'Geist Mono', monospace">sonnet-5-5 · pricing-playbook</text>
+
+          <rect x="640" y="144" width="280" height="64" rx="6" fill="#393e53" stroke="rgba(245,245,245,0.30)" stroke-width="1"/>
+          <text x="656" y="170" fill="#f5f5f5" font-size="15" font-weight="600">Legal</text>
+          <text x="656" y="190" fill="#bfc0c0" font-size="11" font-family="'Geist Mono', monospace">sonnet-5-5 · legal-checklist</text>
+
+          <rect x="640" y="234" width="280" height="64" rx="6" fill="#393e53" stroke="rgba(245,245,245,0.30)" stroke-width="1"/>
+          <text x="656" y="260" fill="#f5f5f5" font-size="15" font-weight="600">Technical Fit</text>
+          <text x="656" y="280" fill="#bfc0c0" font-size="11" font-family="'Geist Mono', monospace">sonnet-5-5 · product-overview</text>
+
+          <rect x="640" y="324" width="280" height="64" rx="6" fill="#393e53" stroke="rgba(245,245,245,0.30)" stroke-width="1"/>
+          <text x="656" y="350" fill="#f5f5f5" font-size="15" font-weight="600">Competitive Intel</text>
+          <text x="656" y="370" fill="#bfc0c0" font-size="11" font-family="'Geist Mono', monospace">haiku-5-5 · competitive-intel</text>
+        </g>
+
+        <!-- deliverables -->
+        <rect x="1004" y="224" width="192" height="90" rx="6" fill="#2d3142"/>
+        <rect x="1004" y="224" width="192" height="90" rx="6" fill="rgba(245,245,245,0.03)" stroke="#949eb2" stroke-width="1" stroke-dasharray="4,3"/>
+        <text x="1020" y="250" fill="#f5f5f5" font-size="15" font-weight="600" font-family="'Geist', sans-serif">Deliverables</text>
+        <text x="1020" y="272" fill="#bfc0c0" font-size="11" font-family="'Geist Mono', monospace">proposal-response.docx</text>
+        <text x="1020" y="290" fill="#bfc0c0" font-size="11" font-family="'Geist Mono', monospace">pitch-deck.html</text>
+
+        <!-- legend strip -->
+        <line x1="8" y1="476" x2="1192" y2="476" stroke="rgba(245,245,245,0.12)" stroke-width="0.8"/>
+        <rect x="8" y="488" width="14" height="10" rx="2" fill="rgba(240,138,89,0.10)" stroke="#f08a59"/>
+        <text x="30" y="497" fill="#949eb2" font-size="11" font-family="'Geist Mono', monospace">focal: the partner</text>
+        <rect x="188" y="488" width="14" height="10" rx="2" fill="#393e53" stroke="rgba(245,245,245,0.30)"/>
+        <text x="210" y="497" fill="#949eb2" font-size="11" font-family="'Geist Mono', monospace">specialist agent + its skill</text>
+        <rect x="430" y="488" width="14" height="10" rx="2" fill="none" stroke="#949eb2" stroke-dasharray="3,2"/>
+        <text x="452" y="497" fill="#949eb2" font-size="11" font-family="'Geist Mono', monospace">files</text>
+        <text x="540" y="497" fill="#949eb2" font-size="11" font-family="'Geist Mono', monospace">Reports return to the partner; threads share files, not conversations.</text>
+      </svg>
+    </div>
+    <footer><span>Skills are markdown files: change a rule, re-run setup</span><span>3 / 9</span></footer>
+    <aside class="note">Everything runs in one Managed Agents session. The partner, on Opus, reads the RFP and briefs four specialists in the same turn. Each specialist has a narrow prompt and its own playbook as a skill, and reads the same mounted files. They don't see each other's work, so nobody anchors on anybody. The partner cross-checks the reports, then writes the docx and the deck. The firm's rules live in markdown skills, not code.</aside>
+  </section>
+
+  <!-- ───────────────────────── 4. The run ───────────────────────── -->
+  <section class="slide" data-time="2:15–3:00">
+    <p class="eyebrow">The latest run · demo profile · 2026-11-04</p>
+    <h1>Four briefs in <em>0.7 seconds</em>, then the partner reads the reports against each other</h1>
+    <div class="stats">
+      <div class="stat focal"><div class="n">0.7 s</div><div class="l">from the first brief to the fourth. <b>All four specialists work in parallel.</b></div></div>
+      <div class="stat"><div class="n">123 s</div><div class="l">wall time for <b>213 s</b> of specialist work</div></div>
+      <div class="stat"><div class="n">7.3 m</div><div class="l">kickoff to docx + deck</div></div>
+      <div class="stat"><div class="n">$1.60</div><div class="l">list price, under a <b>$10</b> hard cap</div></div>
+    </div>
+    <div class="term">
+      <div>$ uv run python run_deal_desk.py</div>
+      <div><span class="hi">[fan-out]</span>&nbsp; 4 specialists briefed within 0.7s, all working in parallel</div>
+      <div><span class="hi">[fan-in]</span>&nbsp;&nbsp; 4 reports in 123s of wall time for 213s of specialist work</div>
+      <div class="ok">proposal-response.docx · pitch-deck.html&nbsp; → outputs/</div>
+    </div>
+    <p class="source">session sesn_01FvbnLaKL4GW9QBcWJCGdZY · runs.jsonl</p>
+    <footer><span>Every run logged with cost, time and fan-out</span><span>4 / 9</span></footer>
+    <aside class="note">This is the run we generated after the final merge. The four briefs leave within 0.7 seconds. The reports come back in two minutes of wall time for three and a half minutes of specialist work. The whole thing, proposal and deck, took just over seven minutes and cost $1.60 against a hard cap of ten.</aside>
+  </section>
+
+  <!-- ───────────────────────── 5. What it decided ───────────────────────── -->
+  <section class="slide" data-time="3:00–3:45">
+    <p class="eyebrow">What the proposal commits to · rehearsal run 3</p>
+    <h1>It says no where the playbook says no, and <em>prices</em> the rest</h1>
+    <table class="t">
+      <thead><tr><th>Acme's ask</th><th>Trap</th><th>The proposal's answer</th></tr></thead>
+      <tbody>
+        <tr><td class="k">35% off, fixed 5 years</td><td class="sec">C1 · C2</td><td class="v">20% off: $576K a year, flat for five years, no escalator needed ($2.88M total)</td></tr>
+        <tr class="seam"><td class="k">Exit on 30 days, no fees</td><td class="sec">C5</td><td class="v">90 days, pro-rated; before month 36, fees re-rate to the one-year price</td></tr>
+        <tr class="seam"><td class="k">99.99% uptime</td><td class="sec">C8</td><td class="v">A priced option: $120K a year for EU active-active, outside the base price</td></tr>
+        <tr><td class="k">Net 90 · MFN</td><td class="sec">C3 · C4</td><td class="v">Net 30 or quarterly; MFN declined because the fixed price already protects Acme</td></tr>
+        <tr><td class="k">Uncapped liability · IP · audits</td><td class="sec">C6 · C10 · C7</td><td class="v">Capped liability, licence instead of assignment, one audit a year on notice</td></tr>
+      </tbody>
+    </table>
+    <p class="source">demo/README.md, "What the rehearsals produced" · all checked by hand against the documents</p>
+    <footer><span>Same numbers in the docx and the deck</span><span>5 / 9</span></footer>
+    <aside class="note">This is rehearsal run 3, checked by hand. It refuses 35% but doesn't walk away: 20% flat for five years, which avoids the escalator Acme bans. The termination seam becomes a re-rate before month 36. 99.99% becomes a priced option. Every refusal comes with a counter.</aside>
+  </section>
+
+  <!-- ───────────────────────── 6. Proof across runs ───────────────────────── -->
+  <section class="slide" data-time="3:45–4:30">
+    <p class="eyebrow">Proof across four runs · demo/scorecard.py</p>
+    <h1>Single-lane traps are solved. The <em>seams</em> are where runs still differ</h1>
+    <div class="grid">
+      <div></div>
+      <div class="h">C1</div><div class="h">C2</div><div class="h">C3</div><div class="h">C4</div><div class="h seam">C5</div><div class="h">C6</div><div class="h">C7</div><div class="h seam">C8</div><div class="h seam">C9</div><div class="h seam">C10</div><div class="h">C11</div><div class="h seam">C12</div><div class="h">C13</div>
+      <div></div>
+
+      <div class="run">Rehearsal 1<span>5.4 min · $1.31</span></div>
+      <div class="cell y"></div><div class="cell y"></div><div class="cell y"></div><div class="cell y"></div><div class="cell y"></div><div class="cell y"></div><div class="cell y"></div><div class="cell y"></div><div class="cell y"></div><div class="cell y"></div><div class="cell y"></div><div class="cell y"></div><div class="cell y"></div>
+      <div class="score">13/13<small>C12 in the notes</small></div>
+
+      <div class="run">Rehearsal 2<span>4.3 min · $1.11</span></div>
+      <div class="cell y"></div><div class="cell y"></div><div class="cell y"></div><div class="cell y"></div><div class="cell y"></div><div class="cell y"></div><div class="cell y"></div><div class="cell y"></div><div class="cell y"></div><div class="cell y"></div><div class="cell y"></div><div class="cell p"></div><div class="cell y"></div>
+      <div class="score">12/13<small>C12 partial</small></div>
+
+      <div class="run">Rehearsal 3<span>6.3 min · $1.79</span></div>
+      <div class="cell y"></div><div class="cell y"></div><div class="cell y"></div><div class="cell y"></div><div class="cell y"></div><div class="cell y"></div><div class="cell y"></div><div class="cell y"></div><div class="cell y"></div><div class="cell y"></div><div class="cell y"></div><div class="cell p"></div><div class="cell y"></div>
+      <div class="score">12/13<small>C12 partial</small></div>
+
+      <div class="run">Latest<span>7.3 min · $1.60</span></div>
+      <div class="cell y"></div><div class="cell y"></div><div class="cell y"></div><div class="cell p"></div><div class="cell y"></div><div class="cell y"></div><div class="cell y"></div><div class="cell n"></div><div class="cell y"></div><div class="cell y"></div><div class="cell y"></div><div class="cell n"></div><div class="cell y"></div>
+      <div class="score">10/13<small>C4 keyword miss</small></div>
+    </div>
+    <div class="legend">
+      <span><i style="background:rgba(245,245,245,0.78)"></i>handled</span>
+      <span><i style="background:repeating-linear-gradient(135deg, rgba(245,245,245,0.45) 0 4px, transparent 4px 8px)"></i>partial, or handled without the keywords</span>
+      <span><i style="border:1px solid #f08a59"></i>missed</span>
+      <span style="color:#f08a59">coral header = cross-lane seam</span>
+    </div>
+    <div class="split">
+      <p><b>Every run</b> refused 35%, MFN, Net 90 and uncapped liability, and sized the Teradata migration. Those rules come straight from the skills.</p>
+      <p><b>The seams vary.</b> The latest run priced neither 99.99% (C8) nor the E5 reframe (C12). That is coordinator prompt work, and the end-to-end eval now measures it.</p>
+    </div>
+    <footer><span>A keyword check, confirmed by hand before quoting</span><span>6 / 9</span></footer>
+    <aside class="note">Four runs on the same RFP. Columns are the thirteen traps; the coral ones are seams. The single-lane rules hold every time, because they're in the skills. The seams are where the runs differ: Fabric's E5 reframe has been partial since run 2, and the latest run dropped the 99.99% pricing. We're honest about that, and the next slide is how we measure it.</aside>
+  </section>
+
+  <!-- ───────────────────────── 7. Evals ───────────────────────── -->
+  <section class="slide" data-time="4:30–5:30">
+    <p class="eyebrow">How we know the answers are right · promptfoo</p>
+    <h1>27 cases test <em>each agent's</em> rules, and the grader is tested too</h1>
+    <div class="flow">
+      <div class="step"><div class="tg">case</div><div class="nm">Acme or a variant</div><div class="sb">one clause flipped,<br>both directions</div></div>
+      <div class="arr">→</div>
+      <div class="step"><div class="tg">run</div><div class="nm">The real agent</div><div class="sb">stored config, its skill,<br>$1 cap per case</div></div>
+      <div class="arr">→</div>
+      <div class="step"><div class="tg">read</div><div class="nm">Judge readout</div><div class="sb">another model records<br>what the answer says</div></div>
+      <div class="arr">→</div>
+      <div class="step focal"><div class="tg">grade</div><div class="nm">Deterministic checks</div><div class="sb">against the playbooks,<br>never a model's opinion</div></div>
+    </div>
+    <div class="stats" style="grid-template-columns: 1.2fr 1fr 1fr 1fr;">
+      <div class="stat focal"><div class="n">24/24</div><div class="l">specialist cases pass on live answers, <b>after calibration</b></div></div>
+      <div class="stat"><div class="n">19→24</div><div class="l">the five first-run failures were <b>eval bugs</b>, found by reading transcripts</div></div>
+      <div class="stat"><div class="n">100 / 0</div><div class="l">% for reference vs empty answers: the grader itself is checked</div></div>
+      <div class="stat"><div class="n">$1.28</div><div class="l">24 live cases, 3 minutes, 4 at a time</div></div>
+    </div>
+    <p class="source">evals/cases.py · evals/grading.py · EVAL_MODE=oracle / null · PR #12, #16</p>
+    <footer><span>evals/pf · evals/pf view · EVAL_MODE=reuse re-grades at $0</span><span>7 / 9</span></footer>
+    <aside class="note">Each case flips one rule on the Acme RFP, and both directions are covered: refuse 35%, but accept Net 60 for a Fortune 500 customer; five blockers in Acme's contract, none in a clean one. The real agents answer; a second model only records what they said; plain code grades it. The first live run scored 19 out of 24, and every one of the five failures turned out to be our test, not the agent. After calibration: 24 out of 24.</aside>
+  </section>
+
+  <!-- ───────────────────────── 8. How we built it ───────────────────────── -->
+  <section class="slide" data-time="5:30–6:15">
+    <p class="eyebrow">How four people shipped it in a day</p>
+    <h1>One worktree per change, <em>one swarm</em> per worktree, a $0 gate on every PR</h1>
+    <div class="cols">
+      <ul class="list">
+        <li><b>Worktrees:</b> <code>claude -w you-topic</code>. A hook blocks edits on <code>main</code>, so nobody steps on the demo.</li>
+        <li><b>Isolated cloud state:</b> each worktree owns its own agents, so one person's prompt experiment never changes anyone else's run.</li>
+        <li><b>Prompts and playbooks are files:</b> four lanes edit four files, with no merge conflicts in code.</li>
+        <li><b>$0 gate:</b> <code>tests/offline_check.py</code> runs the whole pipeline against a fake client in CI, including every eval case.</li>
+        <li><b>Stretch goals shipped:</b> Critic (S2), memory across deals (S3), fan-out timing (S4), a synthetic CRM MCP server (S5), pitch deck (S7), evals.</li>
+      </ul>
+      <div>
+        <div class="box"><h2>Merged pull requests</h2><div class="n">16</div><div class="l">29 commits on main</div></div>
+        <div class="box"><h2>Agents in the swarm</h2><div class="n">5</div><div class="l">+ Critic, 9 custom skills</div></div>
+        <div class="box"><h2>Cost of a full review</h2><div class="n">$1.11–1.79</div><div class="l">across four runs, $10 hard cap</div></div>
+      </div>
+    </div>
+    <footer><span>CLAUDE.md is the team's shared brain</span><span>8 / 9</span></footer>
+    <aside class="note">Four of us worked in parallel all day without stepping on each other. Every change got its own worktree and its own swarm in the cloud, prompts and playbooks are files, and a free offline check gated every PR. That's how we shipped sixteen PRs, including five stretch goals and the evals.</aside>
+  </section>
+
+  <!-- ───────────────────────── 9. Next ───────────────────────── -->
+  <section class="slide" data-time="6:15–7:00">
+    <p class="eyebrow">What's next</p>
+    <h1>Close the seams, plug in real data, and <em>let the evals decide</em></h1>
+    <div class="cols">
+      <ul class="list">
+        <li><b>Seams C8 and C12:</b> make the partner price the 99.99% add-on and reframe "free with E5" every time. The end-to-end eval tells us when it holds.</li>
+        <li><b>CRM over MCP:</b> wire the synthetic CRM into Pricing instead of a raw file (open PR #15).</li>
+        <li><b>Real data:</b> a cleared RFP, the firm's own playbooks, and a deal expert's blind answer key to score against (<code>demo/README.md</code>).</li>
+        <li><b>Memory across deals:</b> record real outcomes, so the next proposal learns from the last.</li>
+      </ul>
+      <div class="box" style="border-color: var(--accent); background: var(--accent-tint);">
+        <h2>The ask</h2>
+        <p class="kicker" style="margin-top: 6px;">Give us one real RFP and the playbooks behind it. We'll show you the seams your reviews miss, for under two dollars.</p>
+      </div>
+    </div>
+    <footer><span>BTS-Synthetic Deal Desk · github.com/ggkhrmv/specialist-swarm</span><span>9 / 9</span></footer>
+    <aside class="note">Three things next: close the two seams the latest run missed, with the eval as the judge; wire the CRM in over MCP; and run it on a real, cleared RFP against an expert's blind answer key. Our ask: one real RFP and the playbooks behind it.</aside>
+  </section>
+
+</div></div>
+<div id="notes"></div>
+<div id="clock"></div>
+<script>
+  // Arrows, Space or PageUp/PageDown to move. N: speaker notes. T: rehearsal clock (7:00 target). F: fullscreen.
+  const slides = [...document.querySelectorAll('.slide')];
+  const stage = document.getElementById('stage');
+  const notes = document.getElementById('notes');
+  const clock = document.getElementById('clock');
+  const TARGET = 420;
+  let i = Math.max(0, Math.min(slides.length - 1, (parseInt(location.hash.slice(1), 10) || 1) - 1));
+  let t0 = null, timer = null;
+
+  function fit() {
+    const s = Math.min(window.innerWidth / 1280, window.innerHeight / 720);
+    stage.style.transform = `scale(${s})`;
+  }
+  function show(n) {
+    i = Math.max(0, Math.min(slides.length - 1, n));
+    slides.forEach((el, k) => el.classList.toggle('active', k === i));
+    const note = slides[i].querySelector('aside.note');
+    notes.innerHTML = `<span class="t">${slides[i].dataset.time}</span>${note ? note.innerHTML : ''}`;
+    history.replaceState(null, '', '#' + (i + 1));
+  }
+  function tick() {
+    const s = Math.floor((Date.now() - t0) / 1000);
+    clock.textContent = `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')} / 7:00`;
+    clock.classList.toggle('over', s > TARGET);
+  }
+  document.addEventListener('keydown', (e) => {
+    if (['ArrowRight', 'ArrowDown', 'PageDown', ' '].includes(e.key)) { e.preventDefault(); show(i + 1); }
+    else if (['ArrowLeft', 'ArrowUp', 'PageUp'].includes(e.key)) { e.preventDefault(); show(i - 1); }
+    else if (e.key === 'Home') show(0);
+    else if (e.key === 'End') show(slides.length - 1);
+    else if (e.key === 'n' || e.key === 'N') notes.classList.toggle('on');
+    else if (e.key === 't' || e.key === 'T') {
+      if (timer) { clearInterval(timer); timer = null; clock.classList.remove('on'); }
+      else { t0 = Date.now(); tick(); timer = setInterval(tick, 250); clock.classList.add('on'); }
+    }
+    else if (e.key === 'f' || e.key === 'F') {
+      document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen();
+    }
+  });
+  document.addEventListener('click', (e) => { if (!e.target.closest('a')) show(e.clientX > window.innerWidth / 3 ? i + 1 : i - 1); });
+  window.addEventListener('resize', fit);
+  fit(); show(i);
+</script>
+</body>
+</html>
