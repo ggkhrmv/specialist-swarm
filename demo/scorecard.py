@@ -13,13 +13,13 @@ appear close together (e.g. "MFN" near "decline"). Treat a miss as "look here" a
 confirm it in the document with --show before saying it on stage.
 
 By default it reads the proposal and, if present, the coordinator's internal deal
-notes: some answers belong in the notes, not in front of the customer (e.g. how we
-position against a named competitor). Hits found only in the notes are marked.
+notes and pitch deck: some answers belong there rather than in the proposal (e.g. how
+we position against a named competitor). Hits found outside the proposal are marked.
 
 $0, no network, stdlib only. Works on docx and on text/markdown files.
 
 Usage:
-    uv run python demo/scorecard.py              # outputs/proposal-response.docx + internal-deal-notes.md
+    uv run python demo/scorecard.py              # outputs/: proposal docx (+ notes, deck)
     uv run python demo/scorecard.py <file> [<file> ...] --show
 """
 
@@ -30,8 +30,9 @@ import zipfile
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent.parent
-DEFAULTS = [HERE / "outputs" / "proposal-response.docx",
-            HERE / "outputs" / "internal-deal-notes.md"]
+DEFAULTS = [HERE / "outputs" / "proposal-response.docx",   # the first file is the proposal
+            HERE / "outputs" / "internal-deal-notes.md",
+            HERE / "outputs" / "pitch-deck.html"]
 RADIUS = 3  # paragraphs: the terms of one check must sit within ±RADIUS paragraphs
 
 # Recurring vocabularies
@@ -90,7 +91,12 @@ def read_text(path: Path) -> str:
             xml = z.read("word/document.xml").decode("utf-8")
         xml = re.sub(r"</w:p>|<w:br\s*/>|<w:tab\s*/>|</w:tc>", "\n", xml)
         return html.unescape(re.sub(r"<[^>]+>", "", xml))
-    return path.read_text(encoding="utf-8", errors="replace")
+    text = path.read_text(encoding="utf-8", errors="replace")
+    if path.suffix.lower() in (".html", ".htm"):  # e.g. the pitch deck: one block per line
+        text = re.sub(r"(?is)<(style|script)\b.*?</\1>", "", text)
+        text = re.sub(r"(?i)</(p|div|li|h[1-6]|td|th|tr|section|blockquote)>|<br\s*/?>", "\n", text)
+        text = html.unescape(re.sub(r"<[^>]+>", " ", text))
+    return text
 
 
 def find(text: str, groups: list) -> str | None:
@@ -107,16 +113,19 @@ def find(text: str, groups: list) -> str | None:
 
 
 def default_paths() -> list[Path]:
-    """The proposal, plus the notes only if the same run downloaded them (outputs/ keeps
-    files from earlier runs: a run that writes no notes leaves the old ones behind)."""
-    docx, notes = DEFAULTS
+    """The proposal, plus the other deliverables only if the same run downloaded them
+    (outputs/ keeps files from earlier runs: a run that writes no notes leaves the old
+    ones behind)."""
+    docx, *extras = DEFAULTS
     if not docx.is_file():
         return []
-    if notes.is_file() and abs(notes.stat().st_mtime - docx.stat().st_mtime) < 120:
-        return [docx, notes]
-    if notes.is_file():
-        print(f"  (skipping {notes.name}: it is from an earlier run)\n")
-    return [docx]
+    paths = [docx]
+    for extra in (e for e in extras if e.is_file()):
+        if abs(extra.stat().st_mtime - docx.stat().st_mtime) < 120:
+            paths.append(extra)
+        else:
+            print(f"  (skipping {extra.name}: it is from an earlier run)\n")
+    return paths
 
 
 def main() -> None:
