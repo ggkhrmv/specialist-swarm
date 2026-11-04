@@ -113,6 +113,10 @@ See [`stretch-goals.md`](./stretch-goals.md). The big ones:
 
 ## Two-minute demo
 
+Two decks, both one HTML file in the browser (arrows to move, `N` for speaker notes, `T` for a rehearsal clock, `F` for full screen, print to PDF one slide per page):
+- [`demo/slides.html`](./demo/slides.html): the 2-minute pitch.
+- [`demo/final.html`](./demo/final.html): the 7-minute final readout. It covers the architecture, the latest run, proof across four runs, the evals, and how the team shipped it.
+
 Two-monitor setup:
 - **Monitor 1:** the events stream from the coordinator session, scrolling. You'll see `session.thread_created` × 4, parallel `running`, then `agent.thread_message_received` flowing back. The visible parallelism IS the demo.
 - **Monitor 2:** open `outputs/proposal-response.docx`. Real document, branded, ready to send. Then open `outputs/pitch-deck.html` in a browser: the same bid as five slides (`F` full screen, arrows to step, `N` speaker notes, print to PDF for a leave-behind).
