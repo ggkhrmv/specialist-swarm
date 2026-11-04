@@ -75,9 +75,31 @@ Narrate the events stream while it runs. The room will get it.
 ├── skills/                        (custom skills, one per specialist)
 │   ├── pricing-playbook/SKILL.md
 │   ├── legal-checklist/SKILL.md
-│   └── competitive-intel/SKILL.md
+│   ├── competitive-intel/SKILL.md
+│   └── (asset-forge suite + presentation-websites, see below)
 └── synthetic-data/
     ├── rfp-acme-corp.md           (the RFP that triggers the swarm)
     ├── past-wins.json             (used by pricing specialist)
     └── product-overview.md        (used by technical specialist)
 ```
+
+## Asset-forge skill suite
+
+`skills/` also carries a general-purpose suite for building consulting assets (proposals, RfP/RfQ responses, pitch decks, readouts, presentation sites, capability maps). These are standard Agent Skills (`SKILL.md` + `references/` + `evals/`). Copy them into `~/.claude/skills/` for Claude Code, or upload them with the Skills API the same way `upload_skills.py` does. `upload_skills.py` only uploads the three Deal Desk skills it lists, so these don't change the core build.
+
+| Skill | What it does |
+|---|---|
+| `asset-forge` | Orchestrator. Intake → Qualify → Frame → Storyline → Build → Review → Rework, with a living-log state file and gates |
+| `positioning` | Win themes, discriminators, scope options, compliance matrix and claims register |
+| `storyline` | SCQA / Minto pyramid, governing thought, action titles, exec summary |
+| `asset-review` | Multi-persona review board merged into a page-by-page redline, plus claims and number checks |
+| `voice` | Author-voice matching, DACH/German localization, de-slop pass for marked-up copy |
+| `evidence` | Measuring claims from an organisation's own systems (tickets, repos, logs) defensibly |
+| `diagram-spec` | Hand-built SVG diagrams that are semantically right and geometrically verified |
+| `capability-map` | A reusable, fillable capability/maturity assessment as one HTML file |
+| `presentation-websites` | Brand-agnostic, self-contained single-file presentation sites: you supply the brand kit (tokens, fonts, logo) |
+
+Examples in the suite use `[FIRM]`, `[CLIENT]` and `[REFERENCE-x]` placeholders, and every worked case is fictional. Some skills optionally call `humanizer`, `writing`, `dataviz` or `smd-review` when they're installed; none of them require these.
+
+To try the presentation framework: copy `skills/presentation-websites/template.html`, fill the `BRAND:` tokens and LOGO SLOTs, put your licensed font files in `assets/fonts/` (git-ignored), and run `python3 skills/presentation-websites/embed-fonts.py yourpage.html`.
+
