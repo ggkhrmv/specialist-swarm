@@ -192,9 +192,15 @@ class FakeClient:
         class _BetaFiles:
             def list(self, **kw):
                 fake.calls.append(("beta.files.list", kw))
-                return Obj(data=[Obj(id="file_out", filename="proposal-response.docx")])
+                # Like the real listing: our uploaded inputs come back too, and the
+                # API refuses to download them.
+                return Obj(data=[
+                    Obj(id="file_in", filename="rfp-acme-corp.md", downloadable=False),
+                    Obj(id="file_out", filename="proposal-response.docx", downloadable=True),
+                ])
 
             def download(self, file_id):
+                assert file_id != "file_in", "downloaded an input file (API returns 400)"
                 return Obj(write_to_file=lambda path: Path(path).write_bytes(b"PK fake docx"))
 
         class _Stream:
