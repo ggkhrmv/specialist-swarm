@@ -11,16 +11,25 @@ Step 5 — run the Deal Desk swarm against the synthetic RFP.
    /mnt/session/outputs/ (the proposal docx) into outputs/, and appends the run to
    runs.jsonl, printing the recent history so you can compare iterations.
 
+If you've run stretch_memory.py (stretch S3), this checkout's memory store is attached
+as well, read-write: the coordinator reads past deals before it briefs and records
+this one after it delivers.
+
 Ctrl-C interrupts the session so it stops spending, then downloads whatever exists.
 
 Usage:
-    uv run python run_deal_desk.py
-    DEAL_RFP=~/private/rfp.md uv run python run_deal_desk.py   # another RFP (.md / .txt)
+    uv run python run_deal_desk.py                       # the Acme Corp RFP
+    uv run python run_deal_desk.py --rfp synthetic-data/rfp-kestrel-logistics.md
+    uv run python run_deal_desk.py --no-memory           # don't attach the memory store
+    DEAL_RFP=~/private/rfp.md uv run python run_deal_desk.py   # default RFP (.md / .txt)
 
-Keep real RFPs outside this repo: it is public. See demo/README.md, "Running it on real data".
+--rfp wins over DEAL_RFP. Keep real RFPs outside this repo: it is public. See
+demo/README.md, "Running it on real data".
 """
 
+import argparse
 import os
+import sys
 import time
 from datetime import datetime, timezone
 from pathlib import Path
@@ -29,24 +38,34 @@ import common
 from common import (BRANCH, HERE, INPUTS_DIR, NAMESPACE, OUTPUTS_DIR, PROFILE, PROFILES,
                     approve_tool_call, download_outputs, get_client, load_state, record_run,
                     require, save_state, session_url, sha256_of)
+from stretch_memory import memory_resource
 
 DATA = HERE / "synthetic-data"
-RFP = DATA / "rfp-acme-corp.md"
-if os.environ.get("DEAL_RFP"):  # run the swarm on another RFP, e.g. real data for a demo
-    RFP = Path(os.environ["DEAL_RFP"]).expanduser().resolve()
-    if not RFP.is_file():
-        raise SystemExit(f"DEAL_RFP: no such file: {RFP}")
-    if RFP.suffix.lower() not in (".md", ".txt"):
-        raise SystemExit(f"DEAL_RFP must be .md or .txt (got {RFP.suffix}). Convert it first, "
+def checked_rfp(path: Path, source: str) -> Path:
+    path = path.expanduser().resolve()
+    if not path.is_file():
+        raise SystemExit(f"{source}: no such file: {path}")
+    if path.suffix.lower() not in (".md", ".txt"):
+        raise SystemExit(f"{source} must be .md or .txt (got {path.suffix}). Convert it first, "
                          "e.g. `pdftotext -layout rfp.pdf rfp.txt` or `pandoc rfp.docx -o rfp.md`.")
-INPUT_FILES = [RFP, DATA / "past-wins.json"]  # the capability map is a skill (product-overview)
+    return path
 
 
-def upload_inputs(client, state: dict) -> list[dict]:
+RFP = DATA / "rfp-acme-corp.md"  # the default deal; DEAL_RFP or --rfp picks another
+if os.environ.get("DEAL_RFP"):  # run the swarm on another RFP, e.g. real data for a demo
+    RFP = checked_rfp(Path(os.environ["DEAL_RFP"]), "DEAL_RFP")
+PAST_WINS = DATA / "past-wins.json"  # the capability map is a skill (product-overview)
+
+
+def input_files(rfp: Path = RFP) -> list[Path]:
+    return [rfp, PAST_WINS]
+
+
+def upload_inputs(client, state: dict, rfp: Path = RFP) -> list[dict]:
     """Session resources that mount each input file at INPUTS_DIR/<name>."""
     cache: dict = state.setdefault("input_files", {})
     resources = []
-    for path in INPUT_FILES:
+    for path in input_files(rfp):
         digest = sha256_of(path)
         entry = cache.get(path.name)
         if entry and entry["sha256"] == digest:
@@ -63,12 +82,16 @@ def upload_inputs(client, state: dict) -> list[dict]:
     return resources
 
 
-def kickoff_message() -> str:
+def kickoff_message(rfp: Path = RFP, memory: bool = False) -> str:
+    memory_line = ("Your deal memory is attached (see the memory section of your "
+                   "instructions): read it before you brief, and update it once the docx "
+                   "is saved.\n\n") if memory else ""
     return (
         "An RFP has just landed. Run the standard Deal Desk process.\n\n"
         "Files (read-only; every specialist can read these paths too):\n"
-        f"- RFP: {INPUTS_DIR}/{RFP.name}\n"
-        f"- Past wins, for Pricing: {INPUTS_DIR}/past-wins.json\n\n"
+        f"- RFP: {INPUTS_DIR}/{rfp.name}\n"
+        f"- Past wins, for Pricing: {INPUTS_DIR}/{PAST_WINS.name}\n\n"
+        f"{memory_line}"
         f"Deliverable: {OUTPUTS_DIR}/proposal-response.docx\n"
         "Move fast: the RFP deadline is real."
     )
@@ -132,7 +155,8 @@ class FanOut:
         return {"fanout_agents": len(self.fanout), "fanout_spread_s": round(self.spread(), 1)}
 
 
-def stream_session(client, session_id: str, transcript: list[str], fan: FanOut) -> str:
+def stream_session(client, session_id: str, transcript: list[str], fan: FanOut,
+                   kickoff: str) -> str:
     """Send the kickoff and print the event stream until the swarm is done.
 
     Returns why it stopped: "done", "budget_reached", "retries_exhausted",
@@ -146,7 +170,7 @@ def stream_session(client, session_id: str, transcript: list[str], fan: FanOut) 
         client.beta.sessions.events.send(
             session_id,
             events=[{"type": "user.message",
-                     "content": [{"type": "text", "text": kickoff_message()}]}],
+                     "content": [{"type": "text", "text": kickoff}]}],
         )
         for event in stream:
             t = event.type
@@ -210,17 +234,31 @@ def stream_session(client, session_id: str, transcript: list[str], fan: FanOut) 
 def print_history(history: list[dict], last: int = 5) -> None:
     print(f"\nRUN HISTORY (this checkout, last {min(last, len(history))} of {len(history)})")
     print(f"  {'when (UTC)':16s} {'profile':7s} {'outcome':16s} {'cost':>7s} {'time':>6s}  "
-          f"{'fan-out':>11s}  docx")
+          f"{'fan-out':>11s}  docx  memory  rfp")
     for run in history[-last:]:
         cost = f"${run['cost_usd']:.2f}" if run.get("cost_usd") is not None else "?"
         docx = "yes" if any(f.endswith(".docx") for f in run.get("files", [])) else "no"
         fanout = (f"{run['fanout_agents']} in {run['fanout_spread_s']:.0f}s"
                   if "fanout_agents" in run else "?")
+        memory = "yes" if run.get("memory") else "no"
         print(f"  {run['when'][:16]:16s} {run['profile']:7s} {run['outcome']:16s} "
-              f"{cost:>7s} {run['seconds']:>5.0f}s  {fanout:>11s}  {docx}")
+              f"{cost:>7s} {run['seconds']:>5.0f}s  {fanout:>11s}  {docx:4s}  {memory:6s}  "
+              f"{run.get('rfp', '?')}")
 
 
-def main() -> None:
+def parse_args(argv: list[str]) -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description="Run the Deal Desk swarm against one RFP.")
+    parser.add_argument("--rfp", type=Path, default=RFP,
+                        help=f"the RFP, .md or .txt (default: {os.path.relpath(RFP)}, "
+                             "or $DEAL_RFP if set)")
+    parser.add_argument("--no-memory", action="store_true",
+                        help="don't attach the memory store, even if stretch_memory.py made one")
+    return parser.parse_args(argv)
+
+
+def main(argv: list[str] | None = None) -> None:
+    args = parse_args(argv or [])
+    rfp = checked_rfp(args.rfp, "--rfp")
     client = get_client()
     state = load_state()
     environment_id = require(state, "environment_id", "uv run python setup_swarm.py")
@@ -233,12 +271,16 @@ def main() -> None:
     budget_cents = PROFILES[profile]["budget_cents"]
 
     print("Preparing input files...")
-    resources = upload_inputs(client, state)
+    resources = upload_inputs(client, state, rfp)
+    memory = None if args.no_memory else memory_resource(state)
+    if memory:
+        resources.append(memory)
+        print(f"  attached  memory store {memory['memory_store_id']} (read-write)")
 
     session = client.beta.sessions.create(
         agent=coordinator["id"],
         environment_id=environment_id,
-        title=f"Deal Desk: {RFP.stem} · {NAMESPACE}",
+        title=f"Deal Desk: {rfp.stem} · {NAMESPACE}",
         resources=resources,
         budget={"type": "limit", "max_list_cost": {"amount": budget_cents, "currency": "USD"}},
     )
@@ -252,7 +294,8 @@ def main() -> None:
     transcript: list[str] = []
     fan = FanOut()
     try:
-        outcome = stream_session(client, session.id, transcript, fan)
+        outcome = stream_session(client, session.id, transcript, fan,
+                                 kickoff_message(rfp, memory=bool(memory)))
     except KeyboardInterrupt:
         print("\n\nInterrupted: stopping every thread so the session stops spending...")
         client.beta.sessions.events.send(session.id, events=[{"type": "user.interrupt"}])
@@ -287,9 +330,10 @@ def main() -> None:
         "branch": BRANCH, "namespace": NAMESPACE, "profile": profile,
         "session_id": session.id, "outcome": outcome, "seconds": round(seconds, 1),
         "cost_usd": cost, "files": [f.name for f in files], **fan.record(),
+        "rfp": rfp.name, "memory": bool(memory),
     })
     print_history(history)
 
 
 if __name__ == "__main__":
-    main()
+    main(sys.argv[1:])

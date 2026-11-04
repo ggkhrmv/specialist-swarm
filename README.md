@@ -85,7 +85,14 @@ See [`stretch-goals.md`](./stretch-goals.md). The big ones:
 
 - **Custom firm-voice skill** — codify your own firm's voice (every services firm has one)
 - **Critic sub-agent** — add a fifth agent that reviews the coordinator's draft before it's finalised
-- **Memory across deals** — coordinator remembers past wins and re-uses the right ones
+- **Memory across deals** (built) — coordinator remembers past wins and re-uses the right ones:
+  ```
+  uv run python stretch_memory.py                                 # once: create the memory store
+  uv run python run_deal_desk.py                                  # deal 1: Acme Corp
+  uv run python record_outcome.py "Acme Corp" "Won on 5-year TCO, 25% off list..."
+  uv run python run_deal_desk.py --rfp synthetic-data/rfp-kestrel-logistics.md   # deal 2
+  uv run python stretch_memory.py --show                          # what it learned
+  ```
 - **Synthetic MCP for past wins** — wire up a fake CRM to the pricing specialist
 
 ## Two-minute demo
@@ -115,6 +122,8 @@ specialist-swarm/
 ├── run_deal_desk.py               (5: runs the full swarm against the RFP)
 ├── download_deliverable.py        (re-download a session's output files)
 ├── stretch_critic_subagent.py     (stretch S2: critic agent)
+├── stretch_memory.py              (stretch S3: memory store across deals)
+├── record_outcome.py              (stretch S3: tell memory how a deal went)
 ├── tests/offline_check.py         ($0 fake-client run of the whole pipeline; CI runs it)
 ├── demo/                          (demo kit: pitch, Acme answer key, run of show, real data; scorecard.py)
 ├── scripts/wt.py                  (worktrees: new / ls / ship / clean)
@@ -127,6 +136,7 @@ specialist-swarm/
 │   └── (asset-forge suite + presentation-websites, see below)
 └── synthetic-data/
     ├── rfp-acme-corp.md           (the RFP that triggers the swarm)
+    ├── rfp-kestrel-logistics.md   (a second customer, for the memory stretch)
     └── past-wins.json             (used by pricing specialist)
 ```
 
