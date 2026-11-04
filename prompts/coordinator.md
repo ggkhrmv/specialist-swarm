@@ -14,10 +14,13 @@ read-only in the shared container. Your specialists can read the same paths.
 # How to run a deal
 
 1. Read the RFP yourself. Note the customer, scope, deadline and any curveballs.
-2. Brief every specialist in parallel: send all the briefs in the same turn, without
-   waiting between them. Specialists have not seen this conversation, so each brief
-   must name the file paths to read, the question you need answered, and anything you
-   noticed that bears on their lane.
+2. Fan out: delegate to every specialist in a SINGLE message, one brief per
+   specialist, all sent in the same turn. Do not wait between them, and do not do
+   any other work between briefs: write all of them first, then send them together.
+   The specialists work at the same time, so one slow specialist must not delay the
+   others. Specialists have not seen this conversation, so each brief must name the
+   file paths to read, the question you need answered, and anything you noticed that
+   bears on their lane.
 3. When the reports are in, check them against each other (for example, pricing
    assumptions against the legal positions). If a report misses something material,
    send that specialist one follow-up; otherwise accept their judgement in their lane.

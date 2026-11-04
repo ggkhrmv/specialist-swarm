@@ -74,7 +74,65 @@ def kickoff_message() -> str:
     )
 
 
-def stream_session(client, session_id: str, transcript: list[str]) -> str:
+class FanOut:
+    """Times the fan-out so the parallelism is visible on screen (stretch S4).
+
+    The fan-out is every specialist briefed before the first report comes back.
+    Briefs sent after that (follow-ups, the Critic) are timed but not counted in it.
+    """
+
+    def __init__(self) -> None:
+        self.started = time.monotonic()
+        self.briefed: dict[str, float] = {}   # agent -> seconds since kickoff, first brief
+        self.reported: dict[str, float] = {}  # agent -> seconds since kickoff, first report
+        self.fanout: list[str] = []
+
+    def now(self) -> float:
+        return time.monotonic() - self.started
+
+    def brief(self, agent: str) -> str:
+        t = self.now()
+        self.briefed.setdefault(agent, t)
+        if not self.reported and agent not in self.fanout:
+            self.fanout.append(agent)
+        return self.stamp(t)
+
+    @staticmethod
+    def stamp(t: float) -> str:
+        return f"{f'+{t:.1f}s':>7s}"
+
+    def report(self, agent: str) -> str:
+        t = self.now()
+        summary = ""
+        if not self.reported and len(self.fanout) > 1:
+            summary = (f"  [fan-out]          {len(self.fanout)} specialists briefed within "
+                       f"{self.spread():.1f}s, all working in parallel\n")
+        elif not self.reported:
+            summary = ("  [fan-out]          NOT PARALLEL: a report came back before a second "
+                       "specialist was briefed\n")
+        self.reported.setdefault(agent, t)
+        took = f" ({t - self.briefed[agent]:.0f}s after its brief)" if agent in self.briefed else ""
+        return f"{summary}  [report ←] {self.stamp(t)} {agent}{took}"
+
+    def spread(self) -> float:
+        times = [self.briefed[a] for a in self.fanout]
+        return max(times) - min(times) if times else 0.0
+
+    def fan_in_line(self) -> str | None:
+        """After the run: wall time of the fan-out vs. the work done in it."""
+        done = [a for a in self.fanout if a in self.reported]
+        if not done:
+            return None
+        wall = max(self.reported[a] for a in done) - min(self.briefed[a] for a in done)
+        work = sum(self.reported[a] - self.briefed[a] for a in done)
+        return (f"  [fan-in]           {len(done)} reports in {wall:.0f}s of wall time "
+                f"for {work:.0f}s of specialist work")
+
+    def record(self) -> dict:
+        return {"fanout_agents": len(self.fanout), "fanout_spread_s": round(self.spread(), 1)}
+
+
+def stream_session(client, session_id: str, transcript: list[str], fan: FanOut) -> str:
     """Send the kickoff and print the event stream until the swarm is done.
 
     Returns why it stopped: "done", "budget_reached", "retries_exhausted",
@@ -101,9 +159,10 @@ def stream_session(client, session_id: str, transcript: list[str]) -> str:
             elif t == "session.thread_status_idle":
                 print(f"  [thread idle]      {event.agent_name}", flush=True)
             elif t == "agent.thread_message_sent":
-                print(f"  [brief →]          {event.to_agent_name}", flush=True)
+                print(f"  [brief →]  {fan.brief(event.to_agent_name)} {event.to_agent_name}",
+                      flush=True)
             elif t == "agent.thread_message_received":
-                print(f"  [report ←]         {event.from_agent_name}", flush=True)
+                print(fan.report(event.from_agent_name), flush=True)
 
             # ── The coordinator's own work ──
             elif t == "agent.message":
@@ -148,12 +207,15 @@ def stream_session(client, session_id: str, transcript: list[str]) -> str:
 
 def print_history(history: list[dict], last: int = 5) -> None:
     print(f"\nRUN HISTORY (this checkout, last {min(last, len(history))} of {len(history)})")
-    print(f"  {'when (UTC)':16s} {'profile':7s} {'outcome':16s} {'cost':>7s} {'time':>6s}  docx")
+    print(f"  {'when (UTC)':16s} {'profile':7s} {'outcome':16s} {'cost':>7s} {'time':>6s}  "
+          f"{'fan-out':>11s}  docx")
     for run in history[-last:]:
         cost = f"${run['cost_usd']:.2f}" if run.get("cost_usd") is not None else "?"
         docx = "yes" if any(f.endswith(".docx") for f in run.get("files", [])) else "no"
+        fanout = (f"{run['fanout_agents']} in {run['fanout_spread_s']:.0f}s"
+                  if "fanout_agents" in run else "?")
         print(f"  {run['when'][:16]:16s} {run['profile']:7s} {run['outcome']:16s} "
-              f"{cost:>7s} {run['seconds']:>5.0f}s  {docx}")
+              f"{cost:>7s} {run['seconds']:>5.0f}s  {fanout:>11s}  {docx}")
 
 
 def main() -> None:
@@ -186,8 +248,9 @@ def main() -> None:
 
     started = time.monotonic()
     transcript: list[str] = []
+    fan = FanOut()
     try:
-        outcome = stream_session(client, session.id, transcript)
+        outcome = stream_session(client, session.id, transcript, fan)
     except KeyboardInterrupt:
         print("\n\nInterrupted: stopping every thread so the session stops spending...")
         client.beta.sessions.events.send(session.id, events=[{"type": "user.interrupt"}])
@@ -195,6 +258,8 @@ def main() -> None:
     seconds = time.monotonic() - started
 
     print(f"\n\n[swarm stopped: {outcome}]")
+    if fan_in := fan.fan_in_line():
+        print(fan_in)
     if outcome == "budget_reached":
         print(f"  Hit the ${int(budget_cents) / 100:.2f} cap. Raise budget_cents for the "
               f"'{profile}' profile in common.py for the next run.")
@@ -219,7 +284,7 @@ def main() -> None:
         "when": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "branch": BRANCH, "namespace": NAMESPACE, "profile": profile,
         "session_id": session.id, "outcome": outcome, "seconds": round(seconds, 1),
-        "cost_usd": cost, "files": [f.name for f in files],
+        "cost_usd": cost, "files": [f.name for f in files], **fan.record(),
     })
     print_history(history)
 
