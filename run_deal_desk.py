@@ -59,6 +59,7 @@ def main() -> None:
         agent=coordinator_id,
         environment_id=environment_id,
         title="Deal Desk — Acme Corp RFP",
+        **({"vault_ids": [Path(".vault_id").read_text().strip()]} if Path(".vault_id").exists() else {}),
     )
     Path(".last_session_id").write_text(session.id)
 
