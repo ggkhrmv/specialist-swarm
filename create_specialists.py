@@ -1,133 +1,103 @@
 """
-Create four specialist sub-agents for the Deal Desk swarm.
+Step 3 — create the four Deal Desk specialists (Scenario Card A).
 
 Each specialist gets:
-- A narrow system prompt
-- The agent toolset (file ops, web search, web fetch, bash)
-- A skill that matches its domain (uploaded separately by upload_skills.py)
+- its system prompt from prompts/<key>.md (sent verbatim: edit the file, not code),
+- read-only tools (read / glob / grep): specialists read the mounted RFP and data
+  files from the shared container, they don't write anything,
+- the custom skill for its domain, attached at creation (run upload_skills.py first),
+- the model for its role in the current profile (see PROFILES in common.py).
 
-Saves the resulting agent IDs to .specialist_ids.json so create_coordinator.py
-can reference them.
+The coordinator picks whom to brief from each specialist's `name` and
+`description` below, so keep the descriptions accurate.
+
+Safe to re-run: saved specialists are updated in place (a new version under the
+same ID). After changing a specialist, re-run create_coordinator.py (or just
+setup_swarm.py) so the coordinator's roster points at the new version.
+
+To add a specialist: add an entry to SPECIALISTS, write prompts/<key>.md, and
+(optionally) map a skill to it in SKILL_OWNERS.
 
 Usage:
-    export ANTHROPIC_API_KEY="sk-ant-..."
-    python create_specialists.py
+    uv run python create_specialists.py
 """
 
-import json
-import os
-from pathlib import Path
+from common import (PROFILE, agent_metadata, agent_toolset, get_client, load_prompt,
+                    load_state, model_for, require, save_state, upsert_agent)
 
-from anthropic import Anthropic
+READ_ONLY = ("read", "glob", "grep")
 
+# skill folder name -> specialist key that owns it
+SKILL_OWNERS = {
+    "pricing-playbook": "pricing",
+    "legal-checklist": "legal",
+    "product-overview": "technical_fit",
+    "competitive-intel": "competitive",
+}
 
+# key -> prompts/<key>.md; role -> which model of the profile it runs on
 SPECIALISTS = [
     {
         "key": "pricing",
         "name": "Pricing Specialist",
-        "model": "claude-sonnet-4-6",
-        "system": (
-            "You are the Pricing Specialist in a Deal Desk. Your job is to "
-            "recommend commercial terms for inbound RFPs.\n\n"
-            "Inputs you'll receive:\n"
-            "- The RFP text\n"
-            "- The pricing-playbook skill (your authoritative pricing rules)\n"
-            "- past-wins.json (recent comparable deals)\n\n"
-            "Your output: a one-page commercial recommendation covering:\n"
-            "1. List price + recommended discount band\n"
-            "2. Term and payment structure\n"
-            "3. Any commercial concessions you'd accept and which you'd refuse\n"
-            "4. Risks to the margin\n\n"
-            "Be specific about numbers. Cite the past-wins data when you use it."
-        ),
+        "description": ("Recommends commercial terms for an RFP: tier, list price, discount "
+                        "band, payment terms, concessions. Give it the RFP and past-wins.json paths."),
+        "role": "specialist",
     },
     {
         "key": "legal",
         "name": "Legal Reviewer",
-        "model": "claude-sonnet-4-6",
-        "system": (
-            "You are the Legal Reviewer in a Deal Desk. Your job is to read "
-            "an RFP and flag every clause that conflicts with our standard "
-            "negotiation positions.\n\n"
-            "Inputs you'll receive:\n"
-            "- The RFP text\n"
-            "- The legal-checklist skill (your authoritative position library)\n\n"
-            "Your output: a structured list of flags, each with:\n"
-            "1. The RFP requirement\n"
-            "2. Why it conflicts with our standard\n"
-            "3. Our recommended counter-position\n"
-            "4. Severity: blocker / negotiable / acceptable\n\n"
-            "Be precise. Don't flag boilerplate just because it's there — "
-            "only call out things that genuinely deviate from our checklist."
-        ),
+        "description": ("Flags RFP clauses that conflict with our standard contract positions "
+                        "and proposes counter-positions. Give it the RFP path."),
+        "role": "specialist",
     },
     {
         "key": "technical_fit",
         "name": "Technical Fit Specialist",
-        "model": "claude-sonnet-4-6",
-        "system": (
-            "You are the Technical Fit Specialist. You decide whether our "
-            "product actually does what the RFP asks for.\n\n"
-            "Inputs:\n"
-            "- The RFP text\n"
-            "- product-overview.md (the canonical capability map)\n\n"
-            "Output: a structured fit assessment:\n"
-            "1. Requirements we meet fully\n"
-            "2. Requirements we meet partially (and what's missing)\n"
-            "3. Requirements we don't meet at all\n"
-            "4. Overall fit score: high / medium / low\n"
-            "5. The single most important risk to flag to the coordinator"
-        ),
+        "description": ("Assesses how well our product covers the RFP's requirements, using "
+                        "the product capability map. Give it the RFP path."),
+        "role": "specialist",
     },
     {
         "key": "competitive",
         "name": "Competitive Intel Analyst",
-        "model": "claude-haiku-4-5-20251001",  # Cheaper for a quick analyst lookup
-        "system": (
-            "You are the Competitive Intel Analyst. You identify who else "
-            "is likely competing for this RFP and how we should position.\n\n"
-            "Inputs:\n"
-            "- The RFP text\n"
-            "- The competitive-intel skill (your battlecard library)\n\n"
-            "Output:\n"
-            "1. The 2-3 most likely competitors based on the RFP shape\n"
-            "2. For each: their probable strengths and weaknesses on THIS deal\n"
-            "3. Our two best positioning angles\n"
-            "4. One trap to avoid"
-        ),
+        "description": ("Identifies the likely competitors on an RFP and how to position "
+                        "against them. Give it the RFP path."),
+        "role": "fast",  # a quick battlecard lookup: the cheap model is enough
     },
 ]
 
 
 def main() -> None:
-    api_key = os.environ.get("ANTHROPIC_API_KEY")
-    if not api_key:
-        raise SystemExit("Set ANTHROPIC_API_KEY before running.")
+    client = get_client()
+    state = load_state()
+    skills = require(state, "skills", "uv run python upload_skills.py")
+    saved: dict = state.setdefault("specialists", {})
 
-    client = Anthropic(
-        api_key=api_key,
-        default_headers={"anthropic-beta": "managed-agents-2026-04-01"},
-    )
-
-    specialist_ids: dict[str, str] = {}
     for spec in SPECIALISTS:
-        agent = client.beta.agents.create(
-            name=spec["name"],
-            model=spec["model"],
-            system=spec["system"],
-            tools=[{"type": "agent_toolset_20260401"}],
-            metadata={
-                "hackathon": "partner-basecamp-2026",
-                "track": "specialist-swarm",
-                "role": spec["key"],
-            },
-        )
-        specialist_ids[spec["key"]] = agent.id
-        print(f"  Created {spec['name']:32s} -> {agent.id}")
+        owned = [s for s, owner in SKILL_OWNERS.items() if owner == spec["key"]]
+        missing = [s for s in owned if s not in skills]
+        if missing:
+            raise SystemExit(f"Skill(s) {missing} not uploaded. Run upload_skills.py first.")
 
-    Path(".specialist_ids.json").write_text(json.dumps(specialist_ids, indent=2))
-    print(f"\nSaved {len(specialist_ids)} specialist IDs to .specialist_ids.json")
-    print("Next: python upload_skills.py")
+        agent, action = upsert_agent(
+            client, saved.get(spec["key"]),
+            name=spec["name"],
+            description=spec["description"],
+            model=model_for(spec["role"]),
+            system=load_prompt(spec["key"]),
+            tools=agent_toolset(only=READ_ONLY),
+            skills=[{"type": "custom", "skill_id": skills[s]["id"], "version": "latest"}
+                    for s in owned],
+            metadata=agent_metadata(spec["key"]),
+        )
+        saved[spec["key"]] = agent.id
+        state["profile"] = PROFILE
+        save_state(state)
+        print(f"  {action:7s} {spec['name']:28s} {agent.id}  (v{agent.version}, "
+              f"skills: {', '.join(owned) or 'none'})")
+
+    print(f"\nProfile: {PROFILE}. Next: uv run python create_coordinator.py")
 
 
 if __name__ == "__main__":

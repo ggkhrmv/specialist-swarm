@@ -1,62 +1,28 @@
 """
-Download every file produced by a Deal Desk session.
+Download every file a Deal Desk session wrote to /mnt/session/outputs/.
 
-By default reads the session ID from `.last_session_id` (written by
-run_deal_desk.py). You can also pass the session ID as a CLI argument
-to grab files from any older session.
+Defaults to the last session run_deal_desk.py started; pass a session ID to grab
+the files from any older session.
 
 Usage:
-    python download_deliverable.py                       # last run
-    python download_deliverable.py sesn_01ABC...         # specific session
+    uv run python download_deliverable.py                  # last run
+    uv run python download_deliverable.py sesn_01ABC...    # a specific session
 """
 
 import sys
-from pathlib import Path
 
-from anthropic import Anthropic
-
-
-OUTPUT_DIR = Path("outputs")
+from common import download_outputs, get_client, load_state, session_url
 
 
 def main() -> None:
-    # Resolve session ID
-    if len(sys.argv) > 1:
-        session_id = sys.argv[1].strip()
-    else:
-        last = Path(".last_session_id")
-        if not last.exists():
-            raise SystemExit(
-                "No session ID provided and `.last_session_id` not found.\n"
-                "Usage: python download_deliverable.py <session_id>"
-            )
-        session_id = last.read_text().strip()
-
-    client = Anthropic()
+    session_id = sys.argv[1].strip() if len(sys.argv) > 1 else load_state().get("last_session_id")
+    if not session_id:
+        raise SystemExit("No session saved yet.\n"
+                         "Usage: uv run python download_deliverable.py <session_id>")
 
     print(f"Listing files for session {session_id}...")
-    # `scope_id` filters to files associated with that session
-    files = client.beta.files.list(
-        scope_id=session_id,
-        betas=["managed-agents-2026-04-01"],
-    )
-
-    OUTPUT_DIR.mkdir(exist_ok=True)
-    count = 0
-    for f in files.data:
-        out_path = OUTPUT_DIR / f.filename
-        print(f"  downloading {f.filename} ({f.id})")
-        content = client.beta.files.download(f.id)
-        content.write_to_file(str(out_path))
-        print(f"    -> {out_path}")
-        count += 1
-
-    if count == 0:
-        print("\nNo files found on that session.")
-        print("Check the session in the Console:")
-        print(f"  https://platform.claude.com/sessions/{session_id}")
-    else:
-        print(f"\nDownloaded {count} file(s) to {OUTPUT_DIR}/")
+    if not download_outputs(get_client(), session_id):
+        print(f"No files found. Check the session trace:\n  {session_url(session_id)}")
 
 
 if __name__ == "__main__":

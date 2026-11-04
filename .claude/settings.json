@@ -1,0 +1,50 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(uv sync *)",
+      "Bash(uv run python tests/offline_check.py *)",
+      "Bash(uv run python setup_swarm.py *)",
+      "Bash(uv run python download_deliverable.py *)",
+      "Bash(uv run python stretch_critic_subagent.py *)",
+      "Bash(python3 scripts/wt.py ls *)",
+      "Bash(python3 scripts/wt.py new *)",
+      "Bash(git worktree list *)"
+    ],
+    "ask": [
+      "Bash(uv run python run_deal_desk.py *)",
+      "Bash(python3 scripts/wt.py ship *)",
+      "Bash(python3 scripts/wt.py clean *)"
+    ],
+    "deny": [
+      "Read(./.env)",
+      "Read(./.claude/worktrees/*/.env)",
+      "Edit(./.env)",
+      "Edit(./.claude/worktrees/*/.env)"
+    ]
+  },
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/session_start.py\"",
+            "timeout": 180
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Edit|Write|NotebookEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/guard_main.py\"",
+            "timeout": 10
+          }
+        ]
+      }
+    ]
+  }
+}

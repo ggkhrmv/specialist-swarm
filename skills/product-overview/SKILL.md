@@ -1,3 +1,8 @@
+---
+name: product-overview
+description: BTS-Synthetic Enterprise Data Platform capability map. Use whenever assessing whether our product meets an RFP's requirements — covers architecture, ingest, analytics, governance, ML/AI, SLA, compliance, known weaknesses and typical implementation timelines. Trigger on any request to assess technical fit, coverage, gaps or feasibility against an RFP.
+---
+
 # BTS-Synthetic Enterprise Data Platform — Capability Map
 
 Authoritative capability list for the Technical Fit Specialist. Use this to answer "do we cover this requirement?"

@@ -1,3 +1,20 @@
-.venv/
+# Secrets — your API key lives here. Never commit it.
 .env
+
+# Local, per-checkout state written by the scripts (agent / environment / skill /
+# session IDs) and the run log. Each checkout owns its own; never commit or copy them.
+.swarm_state.json
+runs.jsonl
+
+# Deliverables downloaded from sessions
+outputs/
+
+# Worktrees (claude -w, EnterWorktree, scripts/wt.py) and personal Claude settings
+.claude/worktrees/
+.claude/settings.local.json
+
+# Python
+.venv/
 __pycache__/
+*.pyc
+.DS_Store

@@ -1,114 +1,92 @@
 """
-Create the coordinator agent that orchestrates the specialist swarm.
+Step 4 — create the coordinator ("Senior Partner") that orchestrates the swarm.
 
-The coordinator's roster is the four specialists created by create_specialists.py.
-The coordinator decides which specialists to consult, in what order, and how to
-synthesise their outputs into the final deliverable.
+- Its system prompt is prompts/coordinator.md. The {{roster}} placeholder is filled
+  from the specialists' own names and descriptions; {{workflows}} and {{critic}} are
+  filled from prompts/coordinator.workflows.md and prompts/coordinator.critic.md
+  when they apply.
+- Its roster is every specialist saved in .swarm_state.json (plus the Critic, if
+  you've run stretch_critic_subagent.py).
+- It carries Anthropic's pre-built docx skill, so it can produce the Word document.
+- It uses the current multiagent type (multiagent_20261001). If your organisation
+  doesn't have that type yet, it falls back to the older `coordinator` type.
 
-Saves the coordinator's ID to .coordinator_id.
+Safe to re-run: the saved coordinator is updated in place. Re-run it after
+changing any specialist so the roster points at the specialists' new versions.
 
 Usage:
-    python create_coordinator.py
+    uv run python create_coordinator.py
 """
 
-import json
-import os
-from pathlib import Path
+import anthropic
 
-from anthropic import Anthropic
+from common import (OUTPUTS_DIR, PROFILE, agent_metadata, agent_toolset, get_client,
+                    load_prompt, load_state, model_for, multiagent_block, require, save_state,
+                    upsert_agent)
 
 
-COORDINATOR_SYSTEM = """\
-You are the Senior Partner running the Deal Desk. An inbound RFP has just
-arrived. Your job is to orchestrate the specialists, synthesise their work,
-and produce a single branded proposal response document.
-
-# Your roster
-
-You can call these specialists:
-- Pricing Specialist: commercial terms recommendation
-- Legal Reviewer: contract flags and counter-positions
-- Technical Fit Specialist: product capability fit
-- Competitive Intel Analyst: who else is in the deal and how to position
-
-# How to run a deal
-
-1. Read the RFP yourself first. Note the customer, scope, and any obvious
-   curveballs.
-
-2. Delegate to ALL FOUR specialists in parallel. Each gets:
-   - The full RFP text
-   - A clear, narrow brief stating what you need from them
-   - A deadline ("answer in one message, ~300 words")
-
-3. Synthesise their outputs into a single proposal response. The response
-   should cover:
-   - Executive summary (3 bullets)
-   - Our understanding of the customer's need
-   - Why we're the right fit (drawing on Technical Fit + Competitive Intel)
-   - Commercial proposal (drawing on Pricing)
-   - Contract approach (drawing on Legal)
-   - Risks and how we mitigate them
-
-4. Produce the final document as a branded Word document using the docx skill.
-   Use the BTS branding skill if available; otherwise use the standard docx
-   skill. The deliverable is the docx itself, not a chat message.
-
-# How to talk to specialists
-
-When delegating, be direct: "Pricing Specialist: for this RFP, recommend
-terms. Include discount band and red-line concessions. Cite past-wins.json
-where relevant."
-
-When you receive a specialist's reply, accept it. Don't second-guess. If
-you genuinely disagree, send the specialist a follow-up — but only if it
-matters.
-
-# Tone
-
-Senior partner running a real deal. Confident, terse, decisive. You move
-fast because the RFP deadline is real.
-"""
+def build_system(roster_lines: list[str], workflows: bool, critic: bool) -> str:
+    return load_prompt(
+        "coordinator",
+        roster="\n".join(roster_lines),
+        outputs=OUTPUTS_DIR,
+        workflows=load_prompt("coordinator.workflows") if workflows else "",
+        critic=load_prompt("coordinator.critic") if critic else "",
+    )
 
 
 def main() -> None:
-    api_key = os.environ.get("ANTHROPIC_API_KEY")
-    if not api_key:
-        raise SystemExit("Set ANTHROPIC_API_KEY before running.")
+    client = get_client()
+    state = load_state()
+    specialists: dict = require(state, "specialists", "uv run python create_specialists.py")
+    agent_ids = list(specialists.values())
 
-    specialist_ids_path = Path(".specialist_ids.json")
-    if not specialist_ids_path.exists():
-        raise SystemExit("Run create_specialists.py first.")
-    specialist_ids = json.loads(specialist_ids_path.read_text())
+    # The roster section is built from the specialists' own names and descriptions.
+    roster_lines = []
+    for agent_id in agent_ids:
+        agent = client.beta.agents.retrieve(agent_id)
+        roster_lines.append(f"- {agent.name}: {agent.description}" if agent.description
+                            else f"- {agent.name}")
 
-    client = Anthropic(
-        api_key=api_key,
-        default_headers={"anthropic-beta": "managed-agents-2026-04-01"},
-    )
-
-    coordinator = client.beta.agents.create(
+    has_critic = "critic" in specialists
+    existing_id = (state.get("coordinator") or {}).get("id")
+    common_config = dict(
         name="Deal Desk Senior Partner",
-        model="claude-opus-4-7",  # Coordinator deserves the most capable model
-        system=COORDINATOR_SYSTEM,
-        tools=[{"type": "agent_toolset_20260401"}],
-        multiagent={
-            "type": "coordinator",
-            "agents": [
-                {"type": "agent", "id": agent_id}
-                for agent_id in specialist_ids.values()
-            ],
-        },
-        metadata={
-            "hackathon": "partner-basecamp-2026",
-            "track": "specialist-swarm",
-            "role": "coordinator",
-        },
+        description="Runs a Deal Desk: briefs the specialists, synthesises, delivers the docx.",
+        model=model_for("coordinator"),
+        tools=agent_toolset(),  # bash + file tools, to build the docx; no web
+        skills=[{"type": "anthropic", "skill_id": "docx"}],
+        metadata=agent_metadata("coordinator"),
     )
 
-    Path(".coordinator_id").write_text(coordinator.id)
-    print(f"Coordinator created: {coordinator.id}")
-    print(f"Roster: {list(specialist_ids.keys())}")
-    print(f"\nNext: python upload_skills.py then python run_deal_desk.py")
+    kind = "multiagent_20261001"
+    try:
+        agent, action = upsert_agent(
+            client, existing_id,
+            system=build_system(roster_lines, workflows=True, critic=has_critic),
+            multiagent=multiagent_block(agent_ids, kind),
+            **common_config,
+        )
+    except anthropic.BadRequestError as error:
+        if "multiagent" not in str(error.message):
+            raise
+        # The org (or beta header) doesn't accept multiagent_20261001 yet.
+        kind = "coordinator"
+        print("  multiagent_20261001 isn't available to this organisation yet; "
+              "using the older `coordinator` type (delegation only, no workflow runs).")
+        agent, action = upsert_agent(
+            client, existing_id,
+            system=build_system(roster_lines, workflows=False, critic=has_critic),
+            multiagent=multiagent_block(agent_ids, kind),
+            **common_config,
+        )
+
+    state["coordinator"] = {"id": agent.id, "multiagent_type": kind}
+    state["profile"] = PROFILE
+    save_state(state)
+    print(f"Coordinator {action}: {agent.id} (v{agent.version}, {kind}, profile {PROFILE})")
+    print(f"Roster: {', '.join(specialists)}")
+    print("\nNext: uv run python run_deal_desk.py")
 
 
 if __name__ == "__main__":

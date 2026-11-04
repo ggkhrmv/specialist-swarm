@@ -13,34 +13,71 @@ You're going to build exactly that, in 60 minutes, around a Deal Desk scenario. 
 
 ## Setup (5 min)
 
-You need a workspace API key on the Console (multi-agent is currently in research preview — your workspace may need to be granted access).
+You need an Anthropic API key from the Console. Managed Agents runs on the Anthropic API only: Bedrock keys and most company gateways won't work here. Multi-agent sessions may need to be enabled for your workspace.
 
 ```bash
-cd 03-specialist-swarm
-pip install -r requirements.txt
-export ANTHROPIC_API_KEY="sk-ant-..."
+uv sync                          # creates .venv with Python 3.10+ and the packages
+echo 'ANTHROPIC_API_KEY=sk-ant-...' > .env   # or export it in your shell (the shell wins)
 ```
+
+`.env` is gitignored. No uv? Use `pip install -r requirements.txt` in a Python 3.10+ venv, then run the scripts with `python` instead of `uv run python`.
 
 ## Pick a scenario card
 
 Three cards in [`scenario-cards.md`](./scenario-cards.md). Each gives you a coordinator + a different roster of specialists. Pick one. Different teams should pick different cards.
 
+**This team builds Card A: Deal Desk.** A Senior Partner coordinator turns the Acme Corp RFP into a branded proposal docx, using four specialists, each backed by its own skill:
+
+| Specialist | Skill | Also reads |
+| --- | --- | --- |
+| Pricing Specialist | `pricing-playbook` | `past-wins.json` |
+| Legal Reviewer | `legal-checklist` | |
+| Technical Fit Specialist | `product-overview` | |
+| Competitive Intel Analyst | `competitive-intel` | |
+
+All four read the RFP.
+
+## Team workflow (4 people, worktrees)
+
+Every change happens in its own git worktree, and each worktree runs its own swarm in the cloud. Nobody's experiment touches a teammate's agents or the demo swarm.
+
+```bash
+# in the main checkout (stays on main: pull, demo, start worktrees)
+git pull
+claude -w alex-legal-redlines        # or: python3 scripts/wt.py new alex-legal-redlines
+
+# inside the worktree
+uv run python tests/offline_check.py # $0, seconds: run after every change
+uv run python setup_swarm.py         # once per worktree, then after every prompt or skill edit
+uv run python run_deal_desk.py       # a real run (dev profile: cheaper models, $3 cap)
+python3 scripts/wt.py ship --merge   # rebase on main, check, push, PR, squash-merge
+```
+
+[`CLAUDE.md`](./CLAUDE.md) has the full rules: lanes, profiles, gotchas and the demo checklist.
+
 ## Core build (25 min)
 
-1. **Create the specialists.** Run `python create_specialists.py`. This creates 3-4 sub-agents (Pricing, Legal, Technical Fit, Competitive) and saves their IDs to `.specialist_ids.json`.
+**Fast path:** `uv run python setup_swarm.py` runs steps 1-4 in order, then step 5 is `uv run python run_deal_desk.py`. To understand the pieces, run them one at a time:
 
-2. **Create the coordinator.** Run `python create_coordinator.py`. This creates the coordinator agent with `multiagent: coordinator` config, listing the specialists in its callable roster.
+1. **Create the environment.** `uv run python setup_environment.py` creates the cloud environment that each session's container comes from.
 
-3. **Upload the skills.** Run `python upload_skills.py`. This packages the custom skills in `skills/` and uploads them via the Skills API. Each specialist gets the skill that matches its domain.
+2. **Upload the skills.** `uv run python upload_skills.py` packages each folder in `skills/` and uploads it through the Skills API. If you edit a `SKILL.md` and re-run, a new version is uploaded.
 
-4. **Run the deal.** Run `python run_deal_desk.py`. This:
-   - Uploads the synthetic RFP (`synthetic-data/rfp-acme-corp.md`) as a file
-   - Starts a session against the coordinator
-   - Asks the coordinator to produce a full proposal response
-   - Streams the events so you can watch the parallel thread fan-out
-   - Saves the final docx to `outputs/proposal-response.docx`
+3. **Create the specialists.** `uv run python create_specialists.py` creates Pricing, Legal, Technical Fit and Competitive Intel. Each gets read-only tools, its system prompt from `prompts/<key>.md`, and the skill for its domain (table above).
+
+4. **Create the coordinator.** `uv run python create_coordinator.py` creates the Senior Partner. It lists the specialists as its roster (`multiagent_20261001`) and carries Anthropic's pre-built `docx` skill. If your organisation doesn't have that multiagent type yet, the script falls back to the older `coordinator` type.
+
+5. **Run the deal.** `uv run python run_deal_desk.py`:
+   - Uploads the RFP and `past-wins.json`, then mounts them read-only at `/mnt/session/uploads/inputs/`. Every thread shares the container, so each specialist reads the files itself. Specialists never see the coordinator's conversation.
+   - Starts a session with a spend cap: **$10 on the `demo` profile, $3 on `dev`** (`PROFILES` in `common.py`)
+   - Streams the events so you can watch the parallel fan-out, and asks you in the terminal if the server pauses a tool call for review
+   - Downloads everything written to `/mnt/session/outputs/` into `outputs/`, including `proposal-response.docx`
 
 By minute 30 you have a Word document in `outputs/`, generated by a coordinator + specialists who each used their own skill.
+
+**Iterating:** every step is safe to re-run. It reuses or updates what it made before instead of creating duplicates, and all IDs live in `.swarm_state.json`. After editing a specialist, re-run `create_coordinator.py` (or just `setup_swarm.py`) so the roster points at the new version. Delete `.swarm_state.json` to start fresh.
+
+**Dynamic workflows** are on for the coordinator, limited to the four specialists. Its prompt tells it to start a workflow run only when asked to handle several RFPs at once; a single RFP is briefed directly. Every agent in a run uses tokens, which is one reason for the session cap. To turn runs off, set `"workflows": {"type": "disabled"}` in `multiagent_block()` in `common.py` and re-run `create_coordinator.py`.
 
 ## Stretch goals (20 min)
 
@@ -62,30 +99,39 @@ Narrate the events stream while it runs. The room will get it.
 ## What's in this folder
 
 ```
-03-specialist-swarm/
+specialist-swarm/
 ├── README.md
 ├── scenario-cards.md
 ├── stretch-goals.md
-├── requirements.txt
-├── create_specialists.py          (creates the sub-agents)
-├── create_coordinator.py          (creates the coordinator)
-├── upload_skills.py               (uploads custom skills via Skills API)
-├── run_deal_desk.py               (runs the full swarm against an RFP)
-├── stretch_critic_subagent.py     (stretch: critic agent)
-├── skills/                        (custom skills, one per specialist)
+├── pyproject.toml / requirements.txt
+├── CLAUDE.md                      (team rules, architecture, gotchas: read this)
+├── common.py                      (client, profiles, namespace, saved IDs, shared helpers)
+├── prompts/                       (every agent's system prompt, sent verbatim)
+├── setup_swarm.py                 (runs steps 1-4 in order)
+├── setup_environment.py           (1: cloud environment)
+├── upload_skills.py               (2: uploads custom skills via the Skills API)
+├── create_specialists.py          (3: the four specialists, skills attached)
+├── create_coordinator.py          (4: the coordinator, roster + docx skill)
+├── run_deal_desk.py               (5: runs the full swarm against the RFP)
+├── download_deliverable.py        (re-download a session's output files)
+├── stretch_critic_subagent.py     (stretch S2: critic agent)
+├── tests/offline_check.py         ($0 fake-client run of the whole pipeline; CI runs it)
+├── scripts/wt.py                  (worktrees: new / ls / ship / clean)
+├── .claude/                       (team settings: hooks, permissions)
+├── skills/                        (Deal Desk skills, one per specialist, + the asset-forge suite)
 │   ├── pricing-playbook/SKILL.md
 │   ├── legal-checklist/SKILL.md
+│   ├── product-overview/SKILL.md  (the capability map, for Technical Fit)
 │   ├── competitive-intel/SKILL.md
 │   └── (asset-forge suite + presentation-websites, see below)
 └── synthetic-data/
     ├── rfp-acme-corp.md           (the RFP that triggers the swarm)
-    ├── past-wins.json             (used by pricing specialist)
-    └── product-overview.md        (used by technical specialist)
+    └── past-wins.json             (used by pricing specialist)
 ```
 
 ## Asset-forge skill suite
 
-`skills/` also carries a general-purpose suite for building consulting assets (proposals, RfP/RfQ responses, pitch decks, readouts, presentation sites, capability maps). These are standard Agent Skills (`SKILL.md` + `references/` + `evals/`). Copy them into `~/.claude/skills/` for Claude Code, or upload them with the Skills API the same way `upload_skills.py` does. `upload_skills.py` only uploads the three Deal Desk skills it lists, so these don't change the core build.
+`skills/` also carries a general-purpose suite for building consulting assets (proposals, RfP/RfQ responses, pitch decks, readouts, presentation sites, capability maps). These are standard Agent Skills (`SKILL.md` + `references/` + `evals/`). Copy them into `~/.claude/skills/` for Claude Code, or upload them with the Skills API the same way `upload_skills.py` does. `upload_skills.py` only uploads the four Deal Desk skills mapped to agents in `SKILL_OWNERS` (`create_specialists.py`), so these don't change the core build.
 
 | Skill | What it does |
 |---|---|

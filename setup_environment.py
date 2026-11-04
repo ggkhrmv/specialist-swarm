@@ -1,38 +1,36 @@
 """
-Create the cloud Environment that the Deal Desk session runs in.
+Step 1 — create the cloud Environment the Deal Desk sessions run in.
 
-Safe to run multiple times — if `.environment_id` already exists, it's reused.
+Each session gets its own container from this environment; the coordinator and
+every specialist thread share that container's filesystem.
+
+Safe to re-run: an environment saved in .swarm_state.json is reused.
 
 Usage:
-    python setup_environment.py
+    uv run python setup_environment.py
 """
 
-import os
-from pathlib import Path
-
-from anthropic import Anthropic
+from common import NAMESPACE, get_client, load_state, save_state
 
 
 def main() -> None:
-    if not os.environ.get("ANTHROPIC_API_KEY"):
-        raise SystemExit("Set ANTHROPIC_API_KEY before running.")
-
-    env_path = Path(".environment_id")
-    if env_path.exists():
-        existing = env_path.read_text().strip()
-        print(f"Environment already exists: {existing}")
-        print("(remove .environment_id if you want to provision a new one)")
+    state = load_state()
+    if state.get("environment_id"):
+        print(f"Environment already exists: {state['environment_id']} (reusing)")
         return
 
-    client = Anthropic()
+    client = get_client()
     environment = client.beta.environments.create(
-        name="specialist-swarm-env",
+        name=f"specialist-swarm-{NAMESPACE}",
         config={
             "type": "cloud",
-            "networking": {"type": "unrestricted"},
+            # No open internet: the agents only read mounted files and build a docx.
+            # Package managers stay reachable in case the docx skill installs a library.
+            "networking": {"type": "limited", "allow_package_managers": True},
         },
     )
-    env_path.write_text(environment.id)
+    state["environment_id"] = environment.id
+    save_state(state)
     print(f"Environment created: {environment.id}")
 
 
