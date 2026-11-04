@@ -1,0 +1,155 @@
+<!--
+  EXAMPLE ONLY. Northwind Logistics and every figure here are fictional, chosen to
+  show the components and diagram recipes. Never copy these numbers into a real deck:
+  take every figure from the specialists' reports and the docx you just built.
+  Build it with:
+    python3 ../scripts/build_deck.py example-slides.html /tmp/example-deck.html \
+      --title "Northwind Logistics · Fleet data platform proposal" \
+      --context "Northwind Logistics · RFP NW-2026-04 · Confidential"
+-->
+
+<!-- 1. Cover: the governing thought, with the client as the subject -->
+<section class="slide slide--cover">
+  <div class="cover__top">
+    <span class="cover__brand"><svg class="mark" aria-hidden="true"><use href="#bts-mark"/></svg>BTS-Synthetic</span>
+    <span>Proposal for Northwind Logistics · 14 March 2026</span>
+  </div>
+  <div>
+    <h1 class="cover__title">Northwind runs one fleet-data platform <em>by October</em>, at a price fixed for five years</h1>
+    <p class="cover__sub">Our response to RFP NW-2026-04: a lakehouse on Northwind's own cloud, no price escalators, and contract terms both sides can sign.</p>
+  </div>
+  <dl class="cover__facts">
+    <div><dt>Five-year fee</dt><dd>$2.94M</dd></div>
+    <div><dt>Off list price</dt><dd>30%</dd></div>
+    <div><dt>First workload live</dt><dd>Week 12</dd></div>
+  </dl>
+  <aside class="notes">Open on the outcome, not on us. Three numbers to remember: $2.94M over five years, 30% off list, first workload in week 12.</aside>
+</section>
+
+<!-- 2. The answer on one slide: three claims plus the figures that prove them -->
+<section class="slide">
+  <h2 class="title">Northwind gets one platform, a fixed price and a first release in 12 weeks</h2>
+  <div class="body g-7-5">
+    <ul class="points">
+      <li><svg class="icon" aria-hidden="true"><use href="#i-layers"/></svg>
+        <div><strong>All five must-haves covered on Northwind's cloud</strong>
+        <span>Streaming ingest, BI integration and EU residency run natively; nothing is bolted on.</span></div></li>
+      <li><svg class="icon" aria-hidden="true"><use href="#i-price"/></svg>
+        <div><strong>Five years priced today, no escalators</strong>
+        <span>30% off list in return for a three-year commitment and annual billing.</span></div></li>
+      <li><svg class="icon" aria-hidden="true"><use href="#i-contract"/></svg>
+        <div><strong>Terms we can sign quickly</strong>
+        <span>We accept most clauses and counter three, each with a position Legal has used before.</span></div></li>
+    </ul>
+    <div class="kpis kpis--stack">
+      <div class="kpi kpi--inverse"><span class="kpi__figure">$2.94M</span><span class="kpi__label">Five-year fee, fixed at signature</span></div>
+      <div class="kpi"><span class="kpi__figure">5 <small>of 5</small></span><span class="kpi__label">Must-have requirements met natively</span></div>
+    </div>
+  </div>
+  <aside class="notes">If the room only reads one slide, it is this one. The decision we ask for: shortlist us for the June technical deep-dive.</aside>
+</section>
+
+<!-- 3. Why we win: positioning quadrant (diagram recipe B) -->
+<section class="slide">
+  <h2 class="title">We are the only bidder strong on both stack fit and commercial flexibility</h2>
+  <div class="body g-5-7">
+    <div class="stack">
+      <p class="lead">Northwind weights functional fit at 30% and commercial terms at 25%. We lead on both.</p>
+      <ul class="points points--plain">
+        <li><div><strong>Native on Northwind's stack</strong><span>No data copies into a second cloud.</span></div></li>
+        <li><div><strong>Open table formats</strong><span>Northwind can leave with its data at any time.</span></div></li>
+      </ul>
+      <p class="source">Positions are our assessment from public pricing and past bids.</p>
+    </div>
+    <figure class="figure">
+      <svg class="dg" viewBox="0 0 792 440" role="img" aria-labelledby="pos-title pos-desc">
+        <title id="pos-title">Bidder positioning</title>
+        <desc id="pos-desc">BTS-Synthetic sits alone in the high-fit, high-flexibility quadrant; the three other bidders are each weak on one axis.</desc>
+        <rect class="dg-area" x="400" y="40" width="360" height="176"/>
+        <rect class="dg-grid" x="40" y="40" width="720" height="352"/>
+        <line class="dg-grid dg-line--dash" x1="400" y1="40" x2="400" y2="392"/>
+        <line class="dg-grid dg-line--dash" x1="40" y1="216" x2="760" y2="216"/>
+        <text class="dg-axis" x="40" y="24">Commercial flexibility</text>
+        <text class="dg-axis" x="760" y="420" text-anchor="end">Fit with Northwind's stack</text>
+        <text class="dg-axis" x="40" y="420">Low</text>
+        <text class="dg-callout" x="744" y="72" text-anchor="end">Where Northwind wants to be</text>
+        <circle class="dg-dot--quiet" cx="480" cy="316" r="8"/>
+        <text class="dg-name" x="496" y="322">Hyperscaler suite</text>
+        <text class="dg-sub" x="496" y="344">fits, list price only</text>
+        <circle class="dg-dot--quiet" cx="88" cy="120" r="8"/>
+        <text class="dg-name" x="104" y="126">Lakehouse pure-play</text>
+        <text class="dg-sub" x="104" y="148">needs a second cloud</text>
+        <circle class="dg-dot--quiet" cx="88" cy="300" r="8"/>
+        <text class="dg-name" x="104" y="306">Regional integrator</text>
+        <text class="dg-sub" x="104" y="328">custom build</text>
+        <circle class="dg-dot--focal" cx="664" cy="116" r="12"/>
+        <text class="dg-name dg-name--focal" x="644" y="122" text-anchor="end">BTS-Synthetic</text>
+      </svg>
+    </figure>
+  </div>
+  <aside class="notes">Name competitors only as categories on the slide; say the names out loud if asked.</aside>
+</section>
+
+<!-- 4. Commercial: price bridge waterfall (diagram recipe A) + terms table -->
+<section class="slide">
+  <h2 class="title">Five years for $2.94M, 30% below list, with no price escalators</h2>
+  <div class="body g-7-5">
+    <figure class="figure">
+      <svg class="dg" viewBox="0 0 792 440" role="img" aria-labelledby="wf-title wf-desc">
+        <title id="wf-title">Five-year price bridge</title>
+        <desc id="wf-desc">List price of $4.20M falls by a $0.84M volume discount and a $0.42M commitment discount to a five-year fee of $2.94M.</desc>
+        <line class="dg-baseline" x1="40" y1="380" x2="760" y2="380"/>
+        <line class="dg-line dg-line--dash" x1="190" y1="80" x2="250" y2="80"/>
+        <line class="dg-line dg-line--dash" x1="370" y1="140" x2="430" y2="140"/>
+        <line class="dg-line dg-line--dash" x1="550" y1="170" x2="610" y2="170"/>
+        <rect class="dg-bar--light grow" style="--i:0" x="70" y="80" width="120" height="300"/>
+        <rect class="dg-bar--quiet grow" style="--i:1" x="250" y="80" width="120" height="60"/>
+        <rect class="dg-bar--quiet grow" style="--i:2" x="430" y="140" width="120" height="30"/>
+        <rect class="dg-bar--focal grow" style="--i:3" x="610" y="170" width="120" height="210"/>
+        <text class="dg-value" x="130" y="64" text-anchor="middle">$4.20M</text>
+        <text class="dg-value" x="310" y="64" text-anchor="middle">−$0.84M</text>
+        <text class="dg-value" x="490" y="124" text-anchor="middle">−$0.42M</text>
+        <text class="dg-value dg-value--focal" x="670" y="154" text-anchor="middle">$2.94M</text>
+        <text class="dg-label" x="130" y="408" text-anchor="middle">List, five years</text>
+        <text class="dg-label" x="310" y="408" text-anchor="middle">Volume tier</text>
+        <text class="dg-sub" x="310" y="428" text-anchor="middle">−20%</text>
+        <text class="dg-label" x="490" y="408" text-anchor="middle">3-year commit</text>
+        <text class="dg-sub" x="490" y="428" text-anchor="middle">−10%</text>
+        <text class="dg-label" x="670" y="408" text-anchor="middle">Five-year fee</text>
+      </svg>
+      <figcaption>Fees in USD over the full five-year horizon.</figcaption>
+    </figure>
+    <div class="stack">
+      <table class="table">
+        <tr><th>Term</th><th>Our offer</th></tr>
+        <tr><td>Term</td><td>3 years, plus a 2-year renewal at the same price</td></tr>
+        <tr><td>Billing</td><td>Annual in advance, Net 45</td></tr>
+        <tr><td>Escalators</td><td>None for five years</td></tr>
+        <tr><td>Price protection</td><td>Price hold in place of MFN</td></tr>
+      </table>
+      <div class="callout">Discount sits inside the band our pricing playbook allows for this deal size.</div>
+    </div>
+  </div>
+  <aside class="notes">The 30% is the ceiling of the standard band; anything deeper needs CFO approval. We give a price hold, not MFN.</aside>
+</section>
+
+<!-- 5. Contract approach, top risks and the path to award -->
+<section class="slide">
+  <h2 class="title">Three clauses need a counter-position; none of them blocks an award by June</h2>
+  <div class="body">
+    <table class="table">
+      <tr><th>Clause</th><th>Northwind asks</th><th>Our position</th><th></th></tr>
+      <tr><td>Liability</td><td>Uncapped for data breaches</td><td>Cap at 2x annual fees, uncapped for gross negligence</td><td><span class="tag tag--counter">Counter</span></td></tr>
+      <tr><td>Audit</td><td>Unannounced, four per year</td><td>One per year on 30 days' notice, plus our SOC 2 report</td><td><span class="tag tag--counter">Counter</span></td></tr>
+      <tr><td>Termination</td><td>For convenience on 30 days</td><td>Not in year one; afterwards on 90 days</td><td><span class="tag tag--decline">Decline</span></td></tr>
+      <tr><td>Data residency</td><td>EU data stays in the EU</td><td>Agreed as written</td><td><span class="tag tag--accept">Accept</span></td></tr>
+    </table>
+    <ol class="steps">
+      <li class="is-now"><strong>Response submitted</strong><time>14 Mar</time></li>
+      <li><strong>Technical deep-dive</strong><time>Apr</time></li>
+      <li><strong>Contract redlines agreed</strong><time>May</time></li>
+      <li><strong>Award and kick-off</strong><time>30 Jun</time></li>
+    </ol>
+  </div>
+  <aside class="notes">Lead with what we accept. The termination decline is the one Northwind will push on; the fallback is 60 days after year one.</aside>
+</section>

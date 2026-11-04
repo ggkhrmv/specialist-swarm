@@ -31,8 +31,11 @@ from common import get_client, load_state
 from stretch_memory import require_store
 
 
+OUTCOMES_DIR = "/outcomes/"
+
+
 def outcome_path(customer: str) -> str:
-    return "/outcomes/" + re.sub(r"[^a-z0-9]+", "-", customer.lower()).strip("-") + ".md"
+    return OUTCOMES_DIR + re.sub(r"[^a-z0-9]+", "-", customer.lower()).strip("-") + ".md"
 
 
 def main(argv: list[str] | None = None) -> None:
@@ -49,7 +52,8 @@ def main(argv: list[str] | None = None) -> None:
                f"Recorded {date.today().isoformat()} by the deal team. Ground truth: "
                f"this is what happened, not the coordinator's read of it.\n\n{outcome}\n")
 
-    existing = [m for m in memories.list(store_id, path_prefix=path)
+    # path_prefix must be a directory (ending in "/"), not a file path.
+    existing = [m for m in memories.list(store_id, path_prefix=OUTCOMES_DIR)
                 if m.type == "memory" and m.path == path]
     if existing:
         memories.update(existing[0].id, memory_store_id=store_id, content=content)

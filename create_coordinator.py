@@ -9,7 +9,7 @@ Step 4 — create the coordinator ("Senior Partner") that orchestrates the swarm
   you've run stretch_critic_subagent.py).
 - It carries Anthropic's pre-built docx skill, so it can produce the Word document,
   plus the custom skills mapped to "coordinator" in SKILL_OWNERS
-  (create_specialists.py).
+  (create_specialists.py), including deal-deck for the 5-slide HTML pitch deck.
 - It uses the current multiagent type (multiagent_20261001). If your organisation
   doesn't have that type yet, it falls back to the older `coordinator` type.
 
@@ -55,7 +55,8 @@ def main() -> None:
     existing_id = (state.get("coordinator") or {}).get("id")
     common_config = dict(
         name="Deal Desk Senior Partner",
-        description="Runs a Deal Desk: briefs the specialists, synthesises, delivers the docx.",
+        description=("Runs a Deal Desk: briefs the specialists, synthesises, delivers the docx "
+                     "and a 5-slide HTML pitch deck."),
         model=model_for("coordinator"),
         tools=agent_toolset(),  # bash + file tools, to build the docx; no web
         skills=[{"type": "anthropic", "skill_id": "docx"},

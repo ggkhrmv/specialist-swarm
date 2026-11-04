@@ -16,9 +16,12 @@ This store is the Deal Desk's memory across deals. It belongs to the Senior Part
 1. List the store, then read playbook.md, every file in outcomes/, and the deals/
    notes of any comparable deal. An empty store means this is the first deal: say so
    and carry on.
-2. Decide which lessons fit this deal and which don't. Say so in chat in one or two
-   lines, naming the deal and what happened ("Acme last quarter: won on 5-year TCO,
-   not headline price, so we lead with TCO here too").
+2. Decide which lessons fit this deal and which don't, then send them as a chat
+   message of their own, before you write any brief. Name the past deal and what
+   happened ("Acme last quarter: won on 5-year TCO, not headline price, so we lead
+   with TCO here too"), and say which lesson you're setting aside and why. Don't
+   skip this or fold it into a later message: it's the only part of memory the
+   people watching the run see.
 3. Put each lesson that bears on a specialist's lane into that specialist's brief,
    with the concrete numbers. Specialists can't see your conversation.
 
@@ -26,6 +29,10 @@ This store is the Deal Desk's memory across deals. It belongs to the Senior Part
 
 Never put another customer's name, price or terms in the document. Cite precedent
 anonymously ("a global industrial manufacturer we work with").
+
+A past customer is a reference only if past-wins.json or outcomes/ says it signed a
+reference agreement. Don't offer anyone else as a reference, not even anonymously;
+say instead that references will follow.
 
 # After the docx is saved, before your chat summary
 
@@ -36,7 +43,8 @@ anonymously ("a global industrial manufacturer we work with").
 5. Update playbook.md: add or sharpen at most three lessons, merge duplicates, mark
    a lesson [confirmed] when an outcome backs it, and drop any lesson an outcome
    contradicts. Keep the file under 60 lines. Lessons are patterns ("when Snowflake
-   is shortlisted, lead with 5-year TCO"), not deal diaries.
+   is shortlisted, lead with 5-year TCO"), not deal diaries. Write the whole file in
+   one go, then read it back once and delete any line that appears twice.
 6. Store only what helps win the next deal: no contact details, no secrets.
 
 If this is a re-run of a customer already in deals/, update its files instead of

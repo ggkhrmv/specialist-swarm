@@ -12,6 +12,7 @@ What it covers:
   instructions, --rfp / --no-memory, outcomes created then replaced),
 - the critic stretch (roster grows, prompt gains the critic section),
 - the fallback to the older `coordinator` multiagent type,
+- the deal-deck skill: its example builds through its own gates, and bad slides fail,
 - every request's arguments checked against the installed anthropic SDK's type
   hints, so API drift (renamed fields, wrong shapes) fails here instead of costing
   a real run.
@@ -23,7 +24,10 @@ from __future__ import annotations
 
 import inspect
 import io
+import json
 import os
+import re
+import subprocess
 import sys
 import tempfile
 import traceback
@@ -49,6 +53,7 @@ from anthropic.resources.beta.sessions.sessions import Sessions  # noqa: E402
 from anthropic.resources.beta.vaults.credentials import Credentials  # noqa: E402
 from anthropic.resources.beta.vaults.vaults import Vaults  # noqa: E402
 from anthropic.resources.files import Files  # noqa: E402
+from anthropic.resources.messages.messages import Messages  # noqa: E402
 from anthropic.resources.skills.skills import Skills  # noqa: E402
 from anthropic.resources.skills.versions import Versions  # noqa: E402
 from typing_extensions import is_typeddict  # noqa: E402
@@ -140,10 +145,11 @@ def bad_request(message: str) -> anthropic.BadRequestError:
 class FakeClient:
     """Just enough of anthropic.Anthropic for these scripts; validates every call."""
 
-    def __init__(self, events=(), reject_new_multiagent=False):
+    def __init__(self, events=(), reject_new_multiagent=False, served_model="claude-haiku-5-5"):
         self.calls: list[tuple] = []
         self.sent: list[dict] = []
         self.agents_db: dict[str, Obj] = {}
+        self.judge_readout: dict = {}  # what the fake judge (messages.create) returns
         fake = self
 
         class _Agents:
@@ -204,6 +210,7 @@ class FakeClient:
                 return Obj(data=[
                     Obj(id="file_in", filename="rfp-acme-corp.md", downloadable=False),
                     Obj(id="file_out", filename="proposal-response.docx", downloadable=True),
+                    Obj(id="file_deck", filename="pitch-deck.html", downloadable=True),
                 ])
 
             def download(self, file_id):
@@ -234,7 +241,17 @@ class FakeClient:
                 return Obj(id="sesn_1")
 
             def retrieve(self, session_id, **kw):
-                return Obj(usage=Obj(list_cost=Obj(amount="123", currency="USD")))
+                return Obj(usage=Obj(list_cost=Obj(amount="123", currency="USD"),
+                                     input_tokens=900, output_tokens=300),
+                           agent=Obj(model=Obj(id=served_model), version=3))
+
+        class _Messages:  # the eval judge
+            def create(self, **kw):
+                validate(Messages.create, kw, "messages.create")
+                fake.calls.append(("messages.create", kw))
+                return Obj(model=kw["model"], stop_reason="end_turn",
+                           content=[Obj(type="text", text=json.dumps(fake.judge_readout))],
+                           usage=Obj(input_tokens=1000, output_tokens=200))
 
         self.memories_db: dict[str, Obj] = {}
 
@@ -243,6 +260,10 @@ class FakeClient:
                 validate(Memories.list, {"memory_store_id": memory_store_id, **kw},
                          "memory_stores.memories.list")
                 prefix = kw.get("path_prefix", "/")
+                # The API's rule: a prefix is a directory, "/" or "/a/b/", never a file.
+                if not re.fullmatch(r"(/([^/\x00]+/)*)?", prefix):
+                    raise bad_request("path_prefix: does not match regex pattern "
+                                      "`^(/([^/\\x00]+/)*)?$`")
                 return [m for m in fake.memories_db.values() if m.path.startswith(prefix)]
 
             def create(self, memory_store_id, **kw):
@@ -289,6 +310,7 @@ class FakeClient:
                         files=_BetaFiles(), memory_stores=_MemoryStores(), vaults=_Vaults())
         self.skills = _Skills()
         self.files = _Files()
+        self.messages = _Messages()
 
     def of(self, name: str) -> list:
         return [call for call in self.calls if call[0] == name]
@@ -313,11 +335,108 @@ def step(label: str, fn) -> None:
         print("      " + buffer.getvalue().rstrip().replace("\n", "\n      "))
 
 
+def check_evals(tmp: Path, swarm: FakeClient) -> None:
+    """evals/: every case's reference answer passes its checks and an empty one fails;
+    the judge call and the eval session match the SDK's types; reuse re-grades from
+    the readout cache; infra problems come back as promptfoo errors, not failures."""
+    sys.path.insert(0, str(REPO / "evals"))
+    import cases as eval_cases
+    import grading
+    import harness
+    import oracles
+    import provider
+    grading.CACHE, harness.RUNS = tmp / "eval-extract", tmp / "eval-runs"
+
+    def strict(schema: dict, where: str) -> None:  # what structured outputs requires
+        if schema.get("type") == "object":
+            assert schema.get("additionalProperties") is False, f"{where}: additionalProperties must be false"
+            assert schema.get("required") == list(schema["properties"]), f"{where}: all properties required"
+            for key, sub in schema["properties"].items():
+                strict(sub, f"{where}.{key}")
+        if schema.get("type") == "array":
+            strict(schema["items"], f"{where}[]")
+
+    for case in eval_cases.ALL:
+        strict(grading.schema_for(case), case["id"])
+        ref, gold, blank, empty = oracles.run(case), grading.gold(case), grading.blank(case), oracles.empty_run(case)
+        assert set(gold) == set(grading.schema_for(case)["properties"]), f"{case['id']}: gold field outside schema"
+        assert ("substantive", {}) in case["checks"], f"{case['id']}: every case needs `substantive`"
+        for name, params in case["checks"]:
+            assert name in grading.CHECKS, f"{case['id']}: unknown check {name}"
+            ok, reason = grading.run_check(name, gold, ref["text"], ref, params)
+            assert ok, f"{case['id']} {name}: the reference answer fails ({reason})"
+        assert not grading.run_check("substantive", blank, "", empty, {})[0]
+    tests = eval_cases.create_tests({"flows": ["pricing", "legal", "technical_fit", "competitive", "coordinator"]})
+    assert tests and all(t["assert"] and t["vars"]["case_id"] in eval_cases.BY_ID for t in tests)
+
+    def ask(case_id: str, mode: str) -> dict:
+        os.environ["EVAL_MODE"] = mode
+        try:
+            return provider.answer({"vars": {"case_id": case_id}, "repeatIndex": 0})
+        finally:
+            os.environ.pop("EVAL_MODE", None)
+
+    assert ask("pricing-acme", "fake-oracle")["metadata"]["extraction"]["tier"] == "Enterprise"
+    assert ask("legal-acme", "fake-null")["metadata"]["extraction"]["substantive"] is False
+    assert ask("critic-clean-draft", "live")["error"].startswith("[not_set_up]"), "no Critic in this swarm"
+
+    # A live specialist case through the fake sessions API and the fake judge.
+    case = eval_cases.BY_ID["pricing-acme"]
+    answer_events = [event("agent.message", content=[Obj(type="text", text=oracles.run(case)["text"])]),
+                     event("session.status_idle", stop_reason=Obj(type="end_turn"))]
+    client = FakeClient(events=answer_events)
+    client.judge_readout = grading.gold(case)
+    use(client, tmp, "fallback")  # the swarm set up in step 4
+    result = ask("pricing-acme", "live")
+    assert "error" not in result, result
+    session = client.of("sessions.create")[-1][1]
+    assert {r["mount_path"] for r in session["resources"]} == {"/inputs/rfp.md", "/inputs/past-wins.json"}
+    assert session["budget"]["max_list_cost"]["amount"] == harness.SPECIALIST_BUDGET_CENTS
+    judge = client.of("messages.create")
+    assert len(judge) == 1 and judge[0][1]["model"] != "claude-haiku-5-5", "judge must differ from the agent"
+    for name, params in case["checks"]:
+        ok, reason = grading.run_check(name, result["metadata"]["extraction"], result["output"],
+                                       result["metadata"]["run"], params)
+        assert ok, f"live path {name}: {reason}"
+    again = ask("pricing-acme", "reuse")  # saved run + cached readout: no agent, no judge call
+    assert len(client.of("messages.create")) == 1 and again["metadata"]["judge"].get("cached")
+
+    wrong = FakeClient(events=answer_events, served_model="claude-opus-5-5")
+    use(wrong, tmp, "fallback")
+    assert ask("pricing-acme", "live")["error"].startswith("[served_model_mismatch]")
+
+
 def use(client: FakeClient, tmp: Path, tag: str) -> None:
     common.CLIENT_FACTORY = lambda: client
     common.STATE_FILE = tmp / f"state-{tag}.json"
     common.LOCAL_OUTPUTS = tmp / f"outputs-{tag}"
     common.RUNS_LOG = tmp / f"runs-{tag}.jsonl"
+
+
+def check_deal_deck(tmp: Path) -> None:
+    """Build the skill's example with its own script, as the coordinator would."""
+    skill = REPO / "skills" / "deal-deck"
+    script = skill / "scripts" / "build_deck.py"
+
+    def build(slides: Path, out: Path) -> subprocess.CompletedProcess:
+        return subprocess.run([sys.executable, "-I", str(script), str(slides), str(out),
+                               "--title", "Offline check", "--context", "Offline check"],
+                              capture_output=True, text=True, timeout=60)
+
+    out = tmp / "deck" / "pitch-deck.html"
+    result = build(skill / "examples" / "example-slides.html", out)
+    print(result.stdout + result.stderr)
+    assert result.returncode == 0 and "deck OK" in result.stdout, "example deck failed its gates"
+    built = out.read_text()
+    assert "{{" not in built and built.count("@font-face") == 7
+    assert "https://" not in built and "http://" not in built, "deck is not self-contained"
+
+    # The gates must bite: a raw colour and a missing slide both fail the build.
+    bad = tmp / "deck" / "bad-slides.html"
+    bad.write_text('<section class="slide"><h2 class="title" style="color:#ff0000">x</h2></section>')
+    result = build(bad, tmp / "deck" / "bad.html")
+    assert result.returncode == 1 and "raw hex colour" in result.stdout and "expected 5" in result.stdout, \
+        result.stdout
 
 
 def main() -> None:
@@ -368,12 +487,14 @@ def main() -> None:
     assert coordinator["skills"][0] == {"type": "anthropic", "skill_id": "docx"}
     assert len(coordinator["skills"]) == 1 + len(create_specialists.skills_for("coordinator"))
     assert all(s["type"] == "custom" for s in coordinator["skills"][1:])
+    assert "deal-deck" in create_specialists.skills_for("coordinator")
     assert coordinator["multiagent"]["type"] == "multiagent_20261001"
     assert len(coordinator["multiagent"]["subagents"]["predefined_agents"]) == n_specialists
     assert coordinator["model"] == {"id": "claude-sonnet-5-5", "effort": "medium"}  # dev profile
     assert coordinator["metadata"]["namespace"] == "offline-check"
     system = coordinator["system"]
     assert "{{" not in system and "# Workflow runs" in system and "# Critic review" not in system
+    assert f"{common.OUTPUTS_DIR}/pitch-deck.html" in system, "coordinator prompt lost the deck step"
     assert all(f"- {n}:" in system for n in names), "roster lines missing from coordinator prompt"
     for spec, cfg in zip(create_specialists.SPECIALISTS, creates):
         assert cfg["system"] == common.load_prompt(spec["key"]), spec["key"]
@@ -395,6 +516,8 @@ def main() -> None:
     outputs = common.LOCAL_OUTPUTS
     assert (outputs / "coordinator-transcript.md").read_text() == "Proposal saved."
     assert (outputs / "proposal-response.docx").exists()
+    assert (outputs / "pitch-deck.html").exists()
+    assert "pitch-deck.html" in fake.sent[0]["content"][0]["text"], "kickoff lost the deck"
     uploads = len(fake.of("files.upload"))
     step("run_deal_desk (second run reuses uploads)", run_deal_desk.main)
     assert len(fake.of("files.upload")) == uploads == len(run_deal_desk.input_files())
@@ -506,6 +629,13 @@ def main() -> None:
     assert common.model_for("coordinator") == "claude-opus-5-5"
     assert common.model_for("specialist") == "claude-sonnet-5-5"
     common.PROFILE = "dev"
+
+    # 6. The deal-deck skill builds its own example, and its gates reject bad slides.
+    step("deal-deck builds the example deck", lambda: check_deal_deck(tmp))
+
+    # 7. Evals: cases, grader, harness and promptfoo provider, all at $0.
+    step("evals (oracle passes, null fails, judge + session shapes, error path)",
+         lambda: check_evals(tmp, fallback))
 
     if PROBLEMS:
         print("\nREQUEST SHAPE PROBLEMS (would fail against the real API):")

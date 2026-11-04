@@ -9,6 +9,9 @@ runs.jsonl
 # Deliverables downloaded from sessions
 outputs/
 
+# Eval runs, judge readouts and upload ids (per checkout)
+evals/.runs/
+
 # Worktrees (claude -w, EnterWorktree, scripts/wt.py) and personal Claude settings
 .claude/worktrees/
 .claude/settings.local.json
