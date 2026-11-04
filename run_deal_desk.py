@@ -57,8 +57,12 @@ if os.environ.get("DEAL_RFP"):  # run the swarm on another RFP, e.g. real data f
 PAST_WINS = DATA / "past-wins.json"  # the capability map is a skill (product-overview)
 
 
+# With CRM_MCP_URL set, past wins come from the CRM MCP server, not from the file.
+USE_CRM_MCP = bool(os.environ.get("CRM_MCP_URL", "").strip())
+
+
 def input_files(rfp: Path = RFP) -> list[Path]:
-    return [rfp, PAST_WINS]
+    return [rfp] if USE_CRM_MCP else [rfp, PAST_WINS]
 
 
 def upload_inputs(client, state: dict, rfp: Path = RFP) -> list[dict]:
@@ -90,7 +94,8 @@ def kickoff_message(rfp: Path = RFP, memory: bool = False) -> str:
         "An RFP has just landed. Run the standard Deal Desk process.\n\n"
         "Files (read-only; every specialist can read these paths too):\n"
         f"- RFP: {INPUTS_DIR}/{rfp.name}\n"
-        f"- Past wins, for Pricing: {INPUTS_DIR}/{PAST_WINS.name}\n\n"
+        + ("- Past wins: Pricing queries our CRM through MCP tools; there is no file to pass on.\n\n"
+           if USE_CRM_MCP else f"- Past wins, for Pricing: {INPUTS_DIR}/{PAST_WINS.name}\n\n") +
         f"{memory_line}"
         f"Deliverables: {OUTPUTS_DIR}/proposal-response.docx and {OUTPUTS_DIR}/pitch-deck.html\n"
         "Move fast: the RFP deadline is real."
