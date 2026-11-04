@@ -5,7 +5,8 @@ Each specialist gets:
 - its system prompt from prompts/<key>.md (sent verbatim: edit the file, not code),
 - read-only tools (read / glob / grep): specialists read the mounted RFP and data
   files from the shared container, they don't write anything,
-- the custom skill for its domain, attached at creation (run upload_skills.py first),
+- the custom skills mapped to it in SKILL_OWNERS, attached at creation (run
+  upload_skills.py first),
 - the model for its role in the current profile (see PROFILES in common.py).
 
 The coordinator picks whom to brief from each specialist's `name` and
@@ -27,13 +28,35 @@ from common import (PROFILE, agent_metadata, agent_toolset, get_client, load_pro
 
 READ_ONLY = ("read", "glob", "grep")
 
-# skill folder name -> specialist key that owns it
+# skill folder name -> keys of the agents that carry it. Keys are specialist keys,
+# plus "coordinator" and "critic". The first four are the Deal Desk domain skills;
+# the rest come from the asset-forge suite (see README). asset-forge itself stays
+# out: its gates wait for a human sign-off, and these agents run unattended.
 SKILL_OWNERS = {
-    "pricing-playbook": "pricing",
-    "legal-checklist": "legal",
-    "product-overview": "technical_fit",
-    "competitive-intel": "competitive",
+    "pricing-playbook": ("pricing",),
+    "legal-checklist": ("legal",),
+    "product-overview": ("technical_fit",),
+    "competitive-intel": ("competitive",),
+    "positioning": ("coordinator", "technical_fit", "competitive"),
+    "storyline": ("coordinator",),
+    "voice": ("coordinator",),
+    "asset-review": ("critic",),
 }
+
+
+def skills_for(owner: str) -> list[str]:
+    """The skill folders an agent carries, in SKILL_OWNERS order."""
+    return [skill for skill, owners in SKILL_OWNERS.items() if owner in owners]
+
+
+def skill_refs(owner: str, uploaded: dict) -> list[dict]:
+    """The agent `skills` entries for an owner, from the uploaded skills in state."""
+    owned = skills_for(owner)
+    missing = [s for s in owned if s not in uploaded]
+    if missing:
+        raise SystemExit(f"Skill(s) {missing} not uploaded. Run upload_skills.py first.")
+    return [{"type": "custom", "skill_id": uploaded[s]["id"], "version": "latest"}
+            for s in owned]
 
 # key -> prompts/<key>.md; role -> which model of the profile it runs on
 SPECIALISTS = [
@@ -75,11 +98,7 @@ def main() -> None:
     saved: dict = state.setdefault("specialists", {})
 
     for spec in SPECIALISTS:
-        owned = [s for s, owner in SKILL_OWNERS.items() if owner == spec["key"]]
-        missing = [s for s in owned if s not in skills]
-        if missing:
-            raise SystemExit(f"Skill(s) {missing} not uploaded. Run upload_skills.py first.")
-
+        owned = skills_for(spec["key"])
         agent, action = upsert_agent(
             client, saved.get(spec["key"]),
             name=spec["name"],
@@ -87,8 +106,7 @@ def main() -> None:
             model=model_for(spec["role"]),
             system=load_prompt(spec["key"]),
             tools=agent_toolset(only=READ_ONLY),
-            skills=[{"type": "custom", "skill_id": skills[s]["id"], "version": "latest"}
-                    for s in owned],
+            skills=skill_refs(spec["key"], skills),
             metadata=agent_metadata(spec["key"]),
         )
         saved[spec["key"]] = agent.id

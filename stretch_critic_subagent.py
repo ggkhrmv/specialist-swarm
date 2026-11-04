@@ -16,6 +16,7 @@ Usage:
 import create_coordinator
 from common import (agent_metadata, agent_toolset, get_client, load_prompt, load_state,
                     model_for, require, save_state, upsert_agent)
+from create_specialists import skill_refs
 
 
 def main() -> None:
@@ -31,6 +32,7 @@ def main() -> None:
         model=model_for("coordinator"),  # the critic needs to be as sharp as the coordinator
         system=load_prompt("critic"),
         tools=agent_toolset(only=("read", "glob", "grep")),
+        skills=skill_refs("critic", state.get("skills", {})),
         metadata=agent_metadata("critic"),
     )
     specialists["critic"] = critic.id

@@ -301,7 +301,9 @@ def main() -> None:
 
     creates = [c[1] for c in fake.of("agents.create")]
     coordinator = creates[-1]
-    assert coordinator["skills"] == [{"type": "anthropic", "skill_id": "docx"}]
+    assert coordinator["skills"][0] == {"type": "anthropic", "skill_id": "docx"}
+    assert len(coordinator["skills"]) == 1 + len(create_specialists.skills_for("coordinator"))
+    assert all(s["type"] == "custom" for s in coordinator["skills"][1:])
     assert coordinator["multiagent"]["type"] == "multiagent_20261001"
     assert len(coordinator["multiagent"]["subagents"]["predefined_agents"]) == n_specialists
     assert coordinator["model"] == {"id": "claude-sonnet-5-5", "effort": "medium"}  # dev profile
@@ -311,7 +313,7 @@ def main() -> None:
     assert all(f"- {n}:" in system for n in names), "roster lines missing from coordinator prompt"
     for spec, cfg in zip(create_specialists.SPECIALISTS, creates):
         assert cfg["system"] == common.load_prompt(spec["key"]), spec["key"]
-        owned = [s for s, o in create_specialists.SKILL_OWNERS.items() if o == spec["key"]]
+        owned = create_specialists.skills_for(spec["key"])
         assert len(cfg["skills"]) == len(owned), (spec["key"], cfg["skills"])
 
     # 2. Run the deal against the scripted stream.
@@ -339,6 +341,9 @@ def main() -> None:
     last_coordinator = fake.of("agents.update")[-1][1]
     assert len(last_coordinator["multiagent"]["subagents"]["predefined_agents"]) == n_specialists + 1
     assert "# Critic review" in last_coordinator["system"]
+    critic = fake.of("agents.create")[-1][1]
+    assert critic["name"] == "Deal Desk Critic"
+    assert len(critic["skills"]) == len(create_specialists.skills_for("critic"))
 
     # 4. Org without multiagent_20261001: fall back to the older coordinator type.
     fallback = FakeClient(reject_new_multiagent=True)
