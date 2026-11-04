@@ -8,7 +8,7 @@ Step 5 — run the Deal Desk swarm against the synthetic RFP.
    profile the agents were set up with (PROFILES in common.py).
 3. Streams the events so you can watch the fan-out live. This is the demo: narrate it.
 4. Saves the coordinator's transcript, downloads every file the swarm wrote to
-   /mnt/session/outputs/ (the proposal docx) into outputs/, and appends the run to
+   /mnt/session/outputs/ (the proposal docx and the pitch deck) into outputs/, and appends the run to
    runs.jsonl, printing the recent history so you can compare iterations.
 
 If you've run stretch_memory.py (stretch S3), this checkout's memory store is attached
@@ -92,7 +92,7 @@ def kickoff_message(rfp: Path = RFP, memory: bool = False) -> str:
         f"- RFP: {INPUTS_DIR}/{rfp.name}\n"
         f"- Past wins, for Pricing: {INPUTS_DIR}/{PAST_WINS.name}\n\n"
         f"{memory_line}"
-        f"Deliverable: {OUTPUTS_DIR}/proposal-response.docx\n"
+        f"Deliverables: {OUTPUTS_DIR}/proposal-response.docx and {OUTPUTS_DIR}/pitch-deck.html\n"
         "Move fast: the RFP deadline is real."
     )
 
@@ -234,15 +234,16 @@ def stream_session(client, session_id: str, transcript: list[str], fan: FanOut,
 def print_history(history: list[dict], last: int = 5) -> None:
     print(f"\nRUN HISTORY (this checkout, last {min(last, len(history))} of {len(history)})")
     print(f"  {'when (UTC)':16s} {'profile':7s} {'outcome':16s} {'cost':>7s} {'time':>6s}  "
-          f"{'fan-out':>11s}  docx  memory  rfp")
+          f"{'fan-out':>11s}  docx  deck  memory  rfp")
     for run in history[-last:]:
         cost = f"${run['cost_usd']:.2f}" if run.get("cost_usd") is not None else "?"
         docx = "yes" if any(f.endswith(".docx") for f in run.get("files", [])) else "no"
+        deck = "yes" if any(f.endswith("pitch-deck.html") for f in run.get("files", [])) else "no"
         fanout = (f"{run['fanout_agents']} in {run['fanout_spread_s']:.0f}s"
                   if "fanout_agents" in run else "?")
         memory = "yes" if run.get("memory") else "no"
         print(f"  {run['when'][:16]:16s} {run['profile']:7s} {run['outcome']:16s} "
-              f"{cost:>7s} {run['seconds']:>5.0f}s  {fanout:>11s}  {docx:4s}  {memory:6s}  "
+              f"{cost:>7s} {run['seconds']:>5.0f}s  {fanout:>11s}  {docx:4s}  {deck:4s}  {memory:6s}  "
               f"{run.get('rfp', '?')}")
 
 

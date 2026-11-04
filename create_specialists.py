@@ -41,6 +41,7 @@ SKILL_OWNERS = {
     "storyline": ("coordinator",),
     "voice": ("coordinator",),
     "asset-review": ("critic",),
+    "deal-deck": ("coordinator",),  # S7: the 5-slide HTML pitch deck
 }
 
 
