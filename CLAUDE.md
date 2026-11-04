@@ -27,10 +27,12 @@ SessionStart hook runs `uv sync` when one is missing.
 | --- | --- | --- |
 | `uv run python tests/offline_check.py [-v]` | $0, seconds | Runs the whole pipeline against a fake client and validates every request against the installed SDK's types. Run it after every change. CI runs it on every PR. |
 | `uv run python setup_swarm.py` | $0 | Creates or updates this checkout's environment, skills, specialists and coordinator. Idempotent. Re-run it after any prompt, skill, description or profile change. |
-| `uv run python run_deal_desk.py` | **real money**, capped per profile | Runs one session against the RFP: streams events, downloads `outputs/`, appends to `runs.jsonl` and prints the run history. `DEAL_RFP=<path.md\|.txt>` swaps in another RFP (keep real ones outside this public repo). |
+| `uv run python run_deal_desk.py [--rfp FILE] [--no-memory]` | **real money**, capped per profile | Runs one session against the RFP (Acme by default): streams events, downloads `outputs/`, appends to `runs.jsonl` and prints the run history. `--rfp` or `DEAL_RFP=<path.md\|.txt>` swaps in another RFP (keep real ones outside this public repo). |
 | `uv run python download_deliverable.py [sesn_…]` | $0 | Re-downloads a session's output files. |
 | `uv run python demo/scorecard.py [file] [--show]` | $0 | Scores the docx against the 13 traps in the Acme RFP. `demo/README.md` is the demo kit: pitch, answer key, run of show, real-data plan. |
 | `uv run python stretch_critic_subagent.py` | $0 | Adds the Critic to the roster and the prompt. |
+| `uv run python stretch_memory.py [--show]` | $0 | S3: creates this checkout's memory store, which every later run then attaches. Lists (or prints) what it holds. |
+| `uv run python record_outcome.py "<Customer>" "<what happened>"` | $0 | S3: writes a deal's real outcome into the memory store, for the next run to learn from. |
 | `python3 scripts/wt.py new\|ls\|ship [--merge]\|clean` | ship pushes | Worktree lifecycle (see Team workflow). |
 
 There is no linter or unit-test suite; `tests/offline_check.py` is the gate.
@@ -84,6 +86,10 @@ There is no linter or unit-test suite; `tests/offline_check.py` is the gate.
   `client.beta.files.list(scope_id=…)` needs `betas=["managed-agents-2026-04-01"]`. Model IDs are `claude-opus-5-5` /
   `claude-sonnet-5-5` / `claude-haiku-5-5`, with no date suffix. The offline check catches shape drift against the
   installed SDK, so run it after any SDK bump.
+- **Memory (S3) accumulates.** Once `stretch_memory.py` has made a store, every run attaches it read-write, and the
+  coordinator rewrites `playbook.md` and `deals/` in it. Its instructions are `prompts/coordinator.memory.md`, sent as
+  the attachment's `instructions` (max 4096 chars), so editing them needs no setup re-run. Use `--no-memory` when you
+  need runs that don't depend on earlier ones.
 - **Limits:** at most 20 roster entries, one level of delegation (a rostered agent can't have `multiagent`), and 25
   child threads per session.
 - **Managed Agents runs on the Anthropic API only:** no Bedrock keys, no company gateways.

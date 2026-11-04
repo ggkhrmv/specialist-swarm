@@ -8,6 +8,8 @@ What it covers:
 - setup_swarm (first run creates, second run updates: no duplicates),
 - run_deal_desk against a scripted event stream (fan-out, a paused tool call that
   gets denied, early stop at end_turn, downloads, runs.jsonl history),
+- the memory stretch (one store, attached read-write to later sessions with its
+  instructions, --rfp / --no-memory, outcomes created then replaced),
 - the critic stretch (roster grows, prompt gains the critic section),
 - the fallback to the older `coordinator` multiagent type,
 - every request's arguments checked against the installed anthropic SDK's type
@@ -28,6 +30,7 @@ import traceback
 import types
 import typing
 from contextlib import redirect_stdout
+from datetime import datetime
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[1]
@@ -39,6 +42,8 @@ import anthropic  # noqa: E402
 import httpx2  # noqa: E402
 from anthropic.resources.beta.agents.agents import Agents  # noqa: E402
 from anthropic.resources.beta.environments.environments import Environments  # noqa: E402
+from anthropic.resources.beta.memory_stores.memories import Memories  # noqa: E402
+from anthropic.resources.beta.memory_stores.memory_stores import MemoryStores  # noqa: E402
 from anthropic.resources.beta.sessions.events import Events  # noqa: E402
 from anthropic.resources.beta.sessions.sessions import Sessions  # noqa: E402
 from anthropic.resources.files import Files  # noqa: E402
@@ -229,8 +234,43 @@ class FakeClient:
             def retrieve(self, session_id, **kw):
                 return Obj(usage=Obj(list_cost=Obj(amount="123", currency="USD")))
 
+        self.memories_db: dict[str, Obj] = {}
+
+        class _Memories:
+            def list(self, memory_store_id, **kw):
+                validate(Memories.list, {"memory_store_id": memory_store_id, **kw},
+                         "memory_stores.memories.list")
+                prefix = kw.get("path_prefix", "/")
+                return [m for m in fake.memories_db.values() if m.path.startswith(prefix)]
+
+            def create(self, memory_store_id, **kw):
+                validate(Memories.create, {"memory_store_id": memory_store_id, **kw},
+                         "memory_stores.memories.create")
+                fake.calls.append(("memories.create", kw))
+                memory_id = f"mem_{len(fake.memories_db) + 1}"
+                fake.memories_db[memory_id] = Obj(
+                    type="memory", id=memory_id, path=kw["path"], content=kw["content"],
+                    content_size_bytes=len(kw["content"].encode()),
+                    updated_at=datetime(2026, 11, 4, 12, 0))
+                return fake.memories_db[memory_id]
+
+            def update(self, memory_id, **kw):
+                validate(Memories.update, {"memory_id": memory_id, **kw},
+                         "memory_stores.memories.update")
+                fake.calls.append(("memories.update", kw))
+                fake.memories_db[memory_id].content = kw["content"]
+                return fake.memories_db[memory_id]
+
+        class _MemoryStores:
+            memories = _Memories()
+
+            def create(self, **kw):
+                validate(MemoryStores.create, kw, "memory_stores.create")
+                fake.calls.append(("memory_stores.create", kw))
+                return Obj(id="memstore_1")
+
         self.beta = Obj(agents=_Agents(), environments=_Environments(), sessions=_Sessions(),
-                        files=_BetaFiles())
+                        files=_BetaFiles(), memory_stores=_MemoryStores())
         self.skills = _Skills()
         self.files = _Files()
 
@@ -269,9 +309,11 @@ def main() -> None:
     tmp = Path(tempfile.mkdtemp(prefix="swarm-offline-"))
 
     import create_specialists
+    import record_outcome
     import run_deal_desk
     import setup_swarm
     import stretch_critic_subagent
+    import stretch_memory
 
     n_specialists = len(create_specialists.SPECIALISTS)
     names = [s["name"] for s in create_specialists.SPECIALISTS]
@@ -328,8 +370,9 @@ def main() -> None:
     assert session["budget"]["max_list_cost"]["amount"] == common.PROFILES["dev"]["budget_cents"]
     assert session["title"].endswith("· offline-check")
     assert {r["mount_path"] for r in session["resources"]} == {
-        f"/inputs/{p.name}" for p in run_deal_desk.INPUT_FILES}
+        f"/inputs/{p.name}" for p in run_deal_desk.input_files()}  # no memory store yet
     assert fake.sent[0]["type"] == "user.message"
+    assert "memory" not in fake.sent[0]["content"][0]["text"]
     confirmations = [e for e in fake.sent if e["type"] == "user.tool_confirmation"]
     assert confirmations == [{"type": "user.tool_confirmation", "tool_use_id": "sevt_1",
                               "result": "deny"}], confirmations
@@ -338,7 +381,7 @@ def main() -> None:
     assert (outputs / "proposal-response.docx").exists()
     uploads = len(fake.of("files.upload"))
     step("run_deal_desk (second run reuses uploads)", run_deal_desk.main)
-    assert len(fake.of("files.upload")) == uploads == len(run_deal_desk.INPUT_FILES)
+    assert len(fake.of("files.upload")) == uploads == len(run_deal_desk.input_files())
     runs = common.RUNS_LOG.read_text().splitlines()
     assert len(runs) == 2 and '"outcome": "done"' in runs[-1], runs
     assert f'"fanout_agents": {n_specialists}' in runs[-1], runs  # S4: one parallel fan-out
@@ -357,6 +400,46 @@ def main() -> None:
     serial.brief(names[1])
     assert serial.record()["fanout_agents"] == 1
     print("ok    fan-out timing (S4)")
+
+    # 2b. Memory stretch (S3): one store, attached read-write to every later session,
+    #     a second customer's RFP, and outcomes written straight into the store.
+    step("stretch_memory (creates the store)", lambda: stretch_memory.main([]))
+    step("stretch_memory (re-run reuses it)", lambda: stretch_memory.main([]))
+    assert len(fake.of("memory_stores.create")) == 1
+    assert fake.of("memory_stores.create")[0][1]["metadata"]["namespace"] == "offline-check"
+
+    kestrel = run_deal_desk.DATA / "rfp-kestrel-logistics.md"
+    sent_before = len(fake.sent)
+    step("run_deal_desk --rfp kestrel (memory attached)",
+         lambda: run_deal_desk.main(["--rfp", str(kestrel)]))
+    session = fake.of("sessions.create")[-1][1]
+    stores = [r for r in session["resources"] if r["type"] == "memory_store"]
+    assert stores == [{"type": "memory_store", "memory_store_id": "memstore_1",
+                       "access": "read_write",
+                       "instructions": common.load_prompt("coordinator.memory")}], stores
+    assert len(stores[0]["instructions"]) <= 4096  # the API's limit for attachment instructions
+    assert {r["mount_path"] for r in session["resources"] if r["type"] == "file"} == {
+        f"/inputs/{p.name}" for p in run_deal_desk.input_files(kestrel)}
+    assert "rfp-kestrel-logistics" in session["title"]
+    kickoff = fake.sent[sent_before]["content"][0]["text"]
+    assert "rfp-kestrel-logistics.md" in kickoff and "memory is attached" in kickoff, kickoff
+    assert '"memory": true' in common.RUNS_LOG.read_text().splitlines()[-1]
+
+    step("run_deal_desk --no-memory", lambda: run_deal_desk.main(["--no-memory"]))
+    session = fake.of("sessions.create")[-1][1]
+    assert all(r["type"] == "file" for r in session["resources"]), session["resources"]
+
+    step("record_outcome (creates)", lambda: record_outcome.main(["Acme Corp", "Won on TCO."]))
+    step("record_outcome (replaces)", lambda: record_outcome.main(["Acme Corp", "Won, 25% off."]))
+    assert [c[1]["path"] for c in fake.of("memories.create")] == ["/outcomes/acme-corp.md"]
+    assert len(fake.of("memories.update")) == 1
+    assert "Won, 25% off." in fake.memories_db["mem_1"].content
+    step("stretch_memory --show", lambda: stretch_memory.main(["--show"]))
+    try:
+        record_outcome.main(["Acme Corp"])
+        raise AssertionError("record_outcome accepted a missing outcome")
+    except SystemExit:
+        pass
 
     # 3. Critic stretch: roster grows by one, prompt gains the critic section.
     step("stretch_critic_subagent", stretch_critic_subagent.main)
