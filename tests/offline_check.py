@@ -341,12 +341,29 @@ def main() -> None:
     assert len(fake.of("files.upload")) == uploads == len(run_deal_desk.INPUT_FILES)
     runs = common.RUNS_LOG.read_text().splitlines()
     assert len(runs) == 2 and '"outcome": "done"' in runs[-1], runs
+    assert f'"fanout_agents": {n_specialists}' in runs[-1], runs  # S4: one parallel fan-out
+
+    # 2b. S4 fan-out timing: briefs after the first report (follow-ups, the Critic) are not
+    # part of the fan-out, and a one-at-a-time coordinator is flagged as not parallel.
+    fan = run_deal_desk.FanOut()
+    for n in names:
+        fan.brief(n)
+    assert "all working in parallel" in fan.report(names[0])
+    fan.brief("Deal Desk Critic")
+    assert fan.record()["fanout_agents"] == n_specialists, fan.record()
+    serial = run_deal_desk.FanOut()
+    serial.brief(names[0])
+    assert "NOT PARALLEL" in serial.report(names[0])
+    serial.brief(names[1])
+    assert serial.record()["fanout_agents"] == 1
+    print("ok    fan-out timing (S4)")
 
     # 3. Critic stretch: roster grows by one, prompt gains the critic section.
     step("stretch_critic_subagent", stretch_critic_subagent.main)
     last_coordinator = fake.of("agents.update")[-1][1]
     assert len(last_coordinator["multiagent"]["subagents"]["predefined_agents"]) == n_specialists + 1
     assert "# Critic review" in last_coordinator["system"]
+    assert "not part of the fan-out" in last_coordinator["system"]
     critic = fake.of("agents.create")[-1][1]
     assert critic["name"] == "Deal Desk Critic"
     assert len(critic["skills"]) == len(create_specialists.skills_for("critic"))
