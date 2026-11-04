@@ -24,6 +24,7 @@ from __future__ import annotations
 import inspect
 import io
 import os
+import re
 import sys
 import tempfile
 import traceback
@@ -241,6 +242,10 @@ class FakeClient:
                 validate(Memories.list, {"memory_store_id": memory_store_id, **kw},
                          "memory_stores.memories.list")
                 prefix = kw.get("path_prefix", "/")
+                # The API's rule: a prefix is a directory, "/" or "/a/b/", never a file.
+                if not re.fullmatch(r"(/([^/\x00]+/)*)?", prefix):
+                    raise bad_request("path_prefix: does not match regex pattern "
+                                      "`^(/([^/\\x00]+/)*)?$`")
                 return [m for m in fake.memories_db.values() if m.path.startswith(prefix)]
 
             def create(self, memory_store_id, **kw):
