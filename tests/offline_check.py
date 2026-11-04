@@ -24,6 +24,7 @@ from __future__ import annotations
 
 import inspect
 import io
+import json
 import os
 import re
 import subprocess
@@ -50,6 +51,7 @@ from anthropic.resources.beta.memory_stores.memory_stores import MemoryStores  #
 from anthropic.resources.beta.sessions.events import Events  # noqa: E402
 from anthropic.resources.beta.sessions.sessions import Sessions  # noqa: E402
 from anthropic.resources.files import Files  # noqa: E402
+from anthropic.resources.messages.messages import Messages  # noqa: E402
 from anthropic.resources.skills.skills import Skills  # noqa: E402
 from anthropic.resources.skills.versions import Versions  # noqa: E402
 from typing_extensions import is_typeddict  # noqa: E402
@@ -141,10 +143,11 @@ def bad_request(message: str) -> anthropic.BadRequestError:
 class FakeClient:
     """Just enough of anthropic.Anthropic for these scripts; validates every call."""
 
-    def __init__(self, events=(), reject_new_multiagent=False):
+    def __init__(self, events=(), reject_new_multiagent=False, served_model="claude-haiku-5-5"):
         self.calls: list[tuple] = []
         self.sent: list[dict] = []
         self.agents_db: dict[str, Obj] = {}
+        self.judge_readout: dict = {}  # what the fake judge (messages.create) returns
         fake = self
 
         class _Agents:
@@ -236,7 +239,17 @@ class FakeClient:
                 return Obj(id="sesn_1")
 
             def retrieve(self, session_id, **kw):
-                return Obj(usage=Obj(list_cost=Obj(amount="123", currency="USD")))
+                return Obj(usage=Obj(list_cost=Obj(amount="123", currency="USD"),
+                                     input_tokens=900, output_tokens=300),
+                           agent=Obj(model=Obj(id=served_model), version=3))
+
+        class _Messages:  # the eval judge
+            def create(self, **kw):
+                validate(Messages.create, kw, "messages.create")
+                fake.calls.append(("messages.create", kw))
+                return Obj(model=kw["model"], stop_reason="end_turn",
+                           content=[Obj(type="text", text=json.dumps(fake.judge_readout))],
+                           usage=Obj(input_tokens=1000, output_tokens=200))
 
         self.memories_db: dict[str, Obj] = {}
 
@@ -281,6 +294,7 @@ class FakeClient:
                         files=_BetaFiles(), memory_stores=_MemoryStores())
         self.skills = _Skills()
         self.files = _Files()
+        self.messages = _Messages()
 
     def of(self, name: str) -> list:
         return [call for call in self.calls if call[0] == name]
@@ -303,6 +317,77 @@ def step(label: str, fn) -> None:
     print(f"ok    {label}")
     if VERBOSE:
         print("      " + buffer.getvalue().rstrip().replace("\n", "\n      "))
+
+
+def check_evals(tmp: Path, swarm: FakeClient) -> None:
+    """evals/: every case's reference answer passes its checks and an empty one fails;
+    the judge call and the eval session match the SDK's types; reuse re-grades from
+    the readout cache; infra problems come back as promptfoo errors, not failures."""
+    sys.path.insert(0, str(REPO / "evals"))
+    import cases as eval_cases
+    import grading
+    import harness
+    import oracles
+    import provider
+    grading.CACHE, harness.RUNS = tmp / "eval-extract", tmp / "eval-runs"
+
+    def strict(schema: dict, where: str) -> None:  # what structured outputs requires
+        if schema.get("type") == "object":
+            assert schema.get("additionalProperties") is False, f"{where}: additionalProperties must be false"
+            assert schema.get("required") == list(schema["properties"]), f"{where}: all properties required"
+            for key, sub in schema["properties"].items():
+                strict(sub, f"{where}.{key}")
+        if schema.get("type") == "array":
+            strict(schema["items"], f"{where}[]")
+
+    for case in eval_cases.ALL:
+        strict(grading.schema_for(case), case["id"])
+        ref, gold, blank, empty = oracles.run(case), grading.gold(case), grading.blank(case), oracles.empty_run(case)
+        assert set(gold) == set(grading.schema_for(case)["properties"]), f"{case['id']}: gold field outside schema"
+        assert ("substantive", {}) in case["checks"], f"{case['id']}: every case needs `substantive`"
+        for name, params in case["checks"]:
+            assert name in grading.CHECKS, f"{case['id']}: unknown check {name}"
+            ok, reason = grading.run_check(name, gold, ref["text"], ref, params)
+            assert ok, f"{case['id']} {name}: the reference answer fails ({reason})"
+        assert not grading.run_check("substantive", blank, "", empty, {})[0]
+    tests = eval_cases.create_tests({"flows": ["pricing", "legal", "technical_fit", "competitive", "coordinator"]})
+    assert tests and all(t["assert"] and t["vars"]["case_id"] in eval_cases.BY_ID for t in tests)
+
+    def ask(case_id: str, mode: str) -> dict:
+        os.environ["EVAL_MODE"] = mode
+        try:
+            return provider.answer({"vars": {"case_id": case_id}, "repeatIndex": 0})
+        finally:
+            os.environ.pop("EVAL_MODE", None)
+
+    assert ask("pricing-acme", "fake-oracle")["metadata"]["extraction"]["tier"] == "Enterprise"
+    assert ask("legal-acme", "fake-null")["metadata"]["extraction"]["substantive"] is False
+    assert ask("critic-clean-draft", "live")["error"].startswith("[not_set_up]"), "no Critic in this swarm"
+
+    # A live specialist case through the fake sessions API and the fake judge.
+    case = eval_cases.BY_ID["pricing-acme"]
+    answer_events = [event("agent.message", content=[Obj(type="text", text=oracles.run(case)["text"])]),
+                     event("session.status_idle", stop_reason=Obj(type="end_turn"))]
+    client = FakeClient(events=answer_events)
+    client.judge_readout = grading.gold(case)
+    use(client, tmp, "fallback")  # the swarm set up in step 4
+    result = ask("pricing-acme", "live")
+    assert "error" not in result, result
+    session = client.of("sessions.create")[-1][1]
+    assert {r["mount_path"] for r in session["resources"]} == {"/inputs/rfp.md", "/inputs/past-wins.json"}
+    assert session["budget"]["max_list_cost"]["amount"] == harness.SPECIALIST_BUDGET_CENTS
+    judge = client.of("messages.create")
+    assert len(judge) == 1 and judge[0][1]["model"] != "claude-haiku-5-5", "judge must differ from the agent"
+    for name, params in case["checks"]:
+        ok, reason = grading.run_check(name, result["metadata"]["extraction"], result["output"],
+                                       result["metadata"]["run"], params)
+        assert ok, f"live path {name}: {reason}"
+    again = ask("pricing-acme", "reuse")  # saved run + cached readout: no agent, no judge call
+    assert len(client.of("messages.create")) == 1 and again["metadata"]["judge"].get("cached")
+
+    wrong = FakeClient(events=answer_events, served_model="claude-opus-5-5")
+    use(wrong, tmp, "fallback")
+    assert ask("pricing-acme", "live")["error"].startswith("[served_model_mismatch]")
 
 
 def use(client: FakeClient, tmp: Path, tag: str) -> None:
@@ -505,6 +590,10 @@ def main() -> None:
 
     # 6. The deal-deck skill builds its own example, and its gates reject bad slides.
     step("deal-deck builds the example deck", lambda: check_deal_deck(tmp))
+
+    # 7. Evals: cases, grader, harness and promptfoo provider, all at $0.
+    step("evals (oracle passes, null fails, judge + session shapes, error path)",
+         lambda: check_evals(tmp, fallback))
 
     if PROBLEMS:
         print("\nREQUEST SHAPE PROBLEMS (would fail against the real API):")

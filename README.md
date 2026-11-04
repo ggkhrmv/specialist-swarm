@@ -79,6 +79,22 @@ By minute 30 you have a Word document and an executive deck in `outputs/`, gener
 
 **Dynamic workflows** are on for the coordinator, limited to the four specialists. Its prompt tells it to start a workflow run only when asked to handle several RFPs at once; a single RFP is briefed directly. Every agent in a run uses tokens, which is one reason for the session cap. To turn runs off, set `"workflows": {"type": "disabled"}` in `multiagent_block()` in `common.py` and re-run `create_coordinator.py`.
 
+## Evals (promptfoo)
+
+27 cases test whether each agent applies the playbooks: 35% refused, MFN declined, Net 60 accepted for a Fortune 500 customer, five blockers in the Acme contract and none in a clean one, 99.99% rated partial, Fabric found from Azure signals, and more. The agents run for real, and deterministic checks grade them. Ground truth comes from `skills/` and the `demo/README.md` answer key.
+
+```bash
+uv run python setup_swarm.py                 # the evals run this checkout's stored agents
+EVAL_MODE=fake-oracle evals/pf               # $0 wiring check, seconds
+evals/pf                                     # all specialists, live ($1 cap per case)
+evals/pf --filter-metadata flow=legal        # one agent
+evals/pf -c evals/e2e.yaml                   # the whole swarm: orchestration + 13 traps
+evals/pf view                                # every case, check and answer in the browser
+EVAL_MODE=reuse evals/pf                     # re-grade the last answers without re-running agents
+```
+
+Needs Node 22+ for `npx`. Details are in [`CLAUDE.md`](./CLAUDE.md) under "Evals".
+
 ## Stretch goals (20 min)
 
 See [`stretch-goals.md`](./stretch-goals.md). The big ones:
@@ -125,6 +141,7 @@ specialist-swarm/
 ├── stretch_memory.py              (stretch S3: memory store across deals)
 ├── record_outcome.py              (stretch S3: tell memory how a deal went)
 ├── tests/offline_check.py         ($0 fake-client run of the whole pipeline; CI runs it)
+├── evals/                         (promptfoo evals: cases, grader, provider; run with evals/pf)
 ├── demo/                          (demo kit: pitch, Acme answer key, run of show, real data; scorecard.py)
 ├── scripts/wt.py                  (worktrees: new / ls / ship / clean)
 ├── .claude/                       (team settings: hooks, permissions)

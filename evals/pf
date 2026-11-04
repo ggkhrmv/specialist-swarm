@@ -1,0 +1,28 @@
+#!/usr/bin/env bash
+# promptfoo for this checkout: pinned version, this checkout's .venv, no telemetry,
+# and no response cache (a cached answer would hide a prompt change: the cache key
+# doesn't know the agents changed). Re-grade saved answers with EVAL_MODE=reuse.
+#
+#   evals/pf                                   specialists + Critic, live agents
+#   evals/pf --filter-metadata flow=pricing    one agent (pricing, legal, technical_fit, ...)
+#   evals/pf --repeat 3                        variance: 3 runs per case
+#   evals/pf -c evals/e2e.yaml                 the whole swarm, end to end (expensive)
+#   evals/pf view                              browse results in the browser
+#   EVAL_MODE=fake-oracle evals/pf             $0 wiring check, no API calls
+# Any other promptfoo subcommand passes through: evals/pf <command> [args].
+set -euo pipefail
+PROMPTFOO_VERSION=0.125.1
+
+root="$(cd "$(dirname "$0")/.." && pwd)"
+cd "$root"
+[ -x .venv/bin/python ] || uv sync --quiet
+
+export PROMPTFOO_PYTHON="$root/.venv/bin/python"
+export PROMPTFOO_DISABLE_TELEMETRY=1 PROMPTFOO_DISABLE_UPDATE=1 PROMPTFOO_CACHE_ENABLED=false
+
+if [ $# -eq 0 ] || [[ "$1" == -* ]]; then
+  # The default subcommand runs the evals; add the suite config unless one is given.
+  [[ " $* " == *" -c "* || " $* " == *" --config "* ]] || set -- -c evals/promptfooconfig.yaml "$@"
+  set -- eval "$@"
+fi
+exec npx --yes "promptfoo@$PROMPTFOO_VERSION" "$@"
