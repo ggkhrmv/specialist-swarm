@@ -156,12 +156,16 @@ class FanOut:
 
 
 def stream_session(client, session_id: str, transcript: list[str], fan: FanOut,
-                   kickoff: str) -> str:
+                   kickoff: str, *, on_event=None, approve=approve_tool_call,
+                   echo: bool = True) -> str:
     """Send the kickoff and print the event stream until the swarm is done.
 
-    Returns why it stopped: "done", "budget_reached", "retries_exhausted",
+    `on_event` sees every event (the evals record them), `approve` decides tool calls
+    the server paused for review (the evals deny them all), and `echo=False` keeps it
+    quiet. Returns why it stopped: "done", "budget_reached", "retries_exhausted",
     "terminated", or "stream closed".
     """
+    say = print if echo else (lambda *a, **k: None)
     open_runs: set[str] = set()
 
     # Open the stream first, then send: the stream only carries events from the
@@ -174,19 +178,21 @@ def stream_session(client, session_id: str, transcript: list[str], fan: FanOut,
         )
         for event in stream:
             t = event.type
+            if on_event:
+                on_event(event)
 
             # ── The fan-out: this is what to narrate ──
             if t == "session.thread_created":
-                print(f"\n  [thread spawned]   {event.agent_name}", flush=True)
+                say(f"\n  [thread spawned]   {event.agent_name}", flush=True)
             elif t == "session.thread_status_running":
-                print(f"  [thread running]   {event.agent_name}", flush=True)
+                say(f"  [thread running]   {event.agent_name}", flush=True)
             elif t == "session.thread_status_idle":
-                print(f"  [thread idle]      {event.agent_name}", flush=True)
+                say(f"  [thread idle]      {event.agent_name}", flush=True)
             elif t == "agent.thread_message_sent":
-                print(f"  [brief →]  {fan.brief(event.to_agent_name)} {event.to_agent_name}",
+                say(f"  [brief →]  {fan.brief(event.to_agent_name)} {event.to_agent_name}",
                       flush=True)
             elif t == "agent.thread_message_received":
-                print(fan.report(event.from_agent_name), flush=True)
+                say(fan.report(event.from_agent_name), flush=True)
 
             # ── The coordinator's own work ──
             elif t == "agent.message":
@@ -194,29 +200,29 @@ def stream_session(client, session_id: str, transcript: list[str], fan: FanOut,
                     if getattr(block, "type", None) == "text":
                         transcript.append(block.text)
                         # End the line so the next [tag] doesn't run into the text.
-                        print(block.text, end="" if block.text.endswith("\n") else "\n",
+                        say(block.text, end="" if block.text.endswith("\n") else "\n",
                               flush=True)
             elif t in ("agent.tool_use", "agent.mcp_tool_use"):
-                print(f"\n  [tool: {event.name}]", flush=True)
+                say(f"\n  [tool: {event.name}]", flush=True)
                 # Under the `auto` policy the server may pause a call for review.
                 if getattr(event, "evaluated_permission", None) == "ask":
                     client.beta.sessions.events.send(session_id, events=[{
                         "type": "user.tool_confirmation",
                         "tool_use_id": event.id,
-                        "result": "allow" if approve_tool_call(event) else "deny",
+                        "result": "allow" if approve(event) else "deny",
                     }])
 
             # ── Dynamic workflow runs (only if the coordinator starts one) ──
             elif t == "workflow_run.created":
                 open_runs.add(event.workflow_run_id)
-                print(f"\n  [workflow run]     {event.name}", flush=True)
+                say(f"\n  [workflow run]     {event.name}", flush=True)
             elif t == "workflow_run.status_ended":
                 open_runs.discard(event.workflow_run_id)
-                print(f"\n  [workflow ended]   {event.result.type}", flush=True)
+                say(f"\n  [workflow ended]   {event.result.type}", flush=True)
 
             # ── Errors and the end of the run ──
             elif t == "session.error":
-                print(f"\n  [session error] {getattr(event, 'error', event)}", flush=True)
+                say(f"\n  [session error] {getattr(event, 'error', event)}", flush=True)
             elif t == "session.status_idle":
                 reason = event.stop_reason.type
                 if reason == "requires_action":
