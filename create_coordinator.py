@@ -91,6 +91,7 @@ def main() -> None:
         model="claude-opus-4-7",  # Coordinator deserves the most capable model
         system=COORDINATOR_SYSTEM,
         tools=[{"type": "agent_toolset_20260401"}],
+        skills=[{"type": "anthropic", "skill_id": "docx", "version": "latest"}],
         multiagent={
             "type": "coordinator",
             "agents": [
