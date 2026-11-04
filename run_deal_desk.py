@@ -169,7 +169,9 @@ def stream_session(client, session_id: str, transcript: list[str], fan: FanOut) 
                 for block in event.content:
                     if getattr(block, "type", None) == "text":
                         transcript.append(block.text)
-                        print(block.text, end="", flush=True)
+                        # End the line so the next [tag] doesn't run into the text.
+                        print(block.text, end="" if block.text.endswith("\n") else "\n",
+                              flush=True)
             elif t in ("agent.tool_use", "agent.mcp_tool_use"):
                 print(f"\n  [tool: {event.name}]", flush=True)
                 # Under the `auto` policy the server may pause a call for review.
