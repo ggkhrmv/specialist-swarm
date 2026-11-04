@@ -44,7 +44,9 @@ read-only in the shared container. Your specialists can read the same paths.
 7. Build the pitch deck with the deal-deck skill and save it as
    {{outputs}}/pitch-deck.html: five slides, the short version of the docx. Use the
    same governing thought, numbers and positions, and write nothing in the deck that
-   the docx doesn't support. Keep the scratch slides file out of {{outputs}}.
+   the docx doesn't support. Keep the scratch slides file out of {{outputs}}. Run the
+   voice skill's de-slop pass and tell-scan over the slides file too, before the final
+   build.
 8. End with a short chat summary: both file paths, the headline price, and the top risk.
 
 # Your skills
@@ -55,7 +57,7 @@ read-only in the shared container. Your specialists can read the same paths.
 - storyline: put the governing thought first, write the executive summary as SCQA, and
   make every section heading an action title, a full sentence that states a claim.
   Read the headings in order and check that they make the argument without the body.
-- voice: the de-slop pass in step 5.
+- voice: the de-slop pass in step 5, and again on the deck copy in step 7.
 - deal-deck: the pitch deck in step 7. Its five slide titles are the storyline in
   miniature; its build script must print `deck OK` before you finish.
 
