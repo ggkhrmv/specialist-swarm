@@ -12,12 +12,15 @@ It is a keyword check, not a judge: a trap counts as handled when the right term
 appear close together (e.g. "MFN" near "decline"). Treat a miss as "look here" and
 confirm it in the document with --show before saying it on stage.
 
-$0, no network, stdlib only. Works on the docx or on any text/markdown file (e.g.
-outputs/coordinator-transcript.md).
+By default it reads the proposal and, if present, the coordinator's internal deal
+notes: some answers belong in the notes, not in front of the customer (e.g. how we
+position against a named competitor). Hits found only in the notes are marked.
+
+$0, no network, stdlib only. Works on docx and on text/markdown files.
 
 Usage:
-    uv run python demo/scorecard.py                         # outputs/proposal-response.docx
-    uv run python demo/scorecard.py path/to/proposal.docx --show
+    uv run python demo/scorecard.py              # outputs/proposal-response.docx + internal-deal-notes.md
+    uv run python demo/scorecard.py <file> [<file> ...] --show
 """
 
 import html
@@ -27,13 +30,15 @@ import zipfile
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent.parent
-DEFAULT = HERE / "outputs" / "proposal-response.docx"
+DEFAULTS = [HERE / "outputs" / "proposal-response.docx",
+            HERE / "outputs" / "internal-deal-notes.md"]
 RADIUS = 3  # paragraphs: the terms of one check must sit within ±RADIUS paragraphs
 
 # Recurring vocabularies
 PUSHBACK = (r"declin|reject|refus|cannot|can't|won't|will not|do not accept|not accept|"
             r"unacceptable|strike|delete|counter|push back|no MFN|non-starter|blocker|"
-            r"walk away|not agree|excluded")
+            r"walk away|not agree|excluded|not offer|in its place|instead of|"
+            r"price certainty|price protection")
 PCT_WE_CAN_GIVE = r"\b(1[0-9]|2[0-9]|30)(\.\d)?\s?%"
 
 # id, title, lanes, seam?, regexes that must all match within ±RADIUS paragraphs of
@@ -43,9 +48,10 @@ CHECKS = [
     ("C1", "35% discount demand answered with a playbook-sized discount",
      "Pricing", False, [r"35\s?%", PCT_WE_CAN_GIVE]),
     ("C2", "5-year fixed price / no escalators vs the 3-year escalator rule",
-     "Pricing", False, [r"escalat|CPI", r"CPI|capped|\d\s?%|forgo|waive"]),
+     "Pricing", False, [r"escalat|CPI|renewal years?|indexation|price step",
+      r"CPI|capped|\d\s?%|forgo|waive|step|schedule"]),
     ("C3", "Net 90 payment countered (Net 30 / Net 60)",
-     "Pricing", False, [r"Net[ -]?90", r"Net[ -]?(30|60)|quarterly"]),
+     "Pricing", False, [r"Net[ -]?90|payment", r"Net[ -]?(30|60)\b"]),
     ("C4", "MFN clause refused",
      "Pricing + Legal", False, [r"\bMFN\b|most[- ]favou?red", PUSHBACK]),
     ("C5", "30-day termination at will vs the multi-year discount",
@@ -73,7 +79,7 @@ CHECKS = [
      [r"Fabric|Microsoft", r"\bE5\b|TCO|total cost|cost of ownership"]),
     ("C13", "Teradata migration timeline sized (16-24 weeks)",
      "Technical Fit", False,
-     [r"Teradata|migrat|implement|timeline|go-live", r"\b(16|20|24|sixteen|twenty-four)[- ]weeks?"]),
+     [r"Teradata|migrat|implement|timeline|go-live", r"\b(16|20|24|sixteen|twenty-four)[- ]weeks?|weeks?\s+(\d+\s?[–-]\s?)?(16|20|24)\b"]),
 ]
 
 
@@ -100,27 +106,34 @@ def find(text: str, groups: list) -> str | None:
 
 
 def main() -> None:
-    args = [a for a in sys.argv[1:] if not a.startswith("-")]
+    args = [Path(a) for a in sys.argv[1:] if not a.startswith("-")]
     show = "--show" in sys.argv
-    path = Path(args[0]) if args else DEFAULT
-    if not path.is_file():
-        raise SystemExit(f"No such file: {path}. Run the swarm first, or pass a path.")
-    text = read_text(path)
+    paths = args or [p for p in DEFAULTS if p.is_file()]
+    missing = [p for p in args if not p.is_file()]
+    if missing or not paths:
+        raise SystemExit(f"No such file: {missing[0] if missing else DEFAULTS[0]}. "
+                         "Run the swarm first, or pass a path.")
+    texts = [(p, read_text(p)) for p in paths]
 
-    hits, seam_hits, seams = 0, 0, 0
-    print(f"Scorecard: {path.name}  (Acme Corp RFP answer key, demo/README.md)\n")
+    hits, seam_hits, seams, in_main = 0, 0, 0, 0
+    names = " + ".join(p.name for p in paths)
+    print(f"Scorecard: {names}  (Acme Corp RFP answer key, demo/README.md)\n")
     for cid, title, lanes, seam, groups in CHECKS:
-        snippet = find(text, groups)
-        ok = snippet is not None
+        found = next(((p, snip) for p, text in texts if (snip := find(text, groups))), None)
+        ok = found is not None
         hits += ok
+        in_main += ok and found[0] == paths[0]
         seams += seam
         seam_hits += ok and seam
         mark = "✓" if ok else "✗"
         tag = "  [seam]" if seam else ""
-        print(f"  {mark} {cid:4s} {title}  ({lanes}){tag}")
+        where = f"  [in {found[0].name}]" if ok and found[0] != paths[0] else ""
+        print(f"  {mark} {cid:4s} {title}  ({lanes}){tag}{where}")
         if show and ok:
-            print(f"         … {snippet[:380]} …")
+            print(f"         … {found[1][:380]} …")
     print(f"\n  Traps handled: {hits}/{len(CHECKS)}   cross-lane seams: {seam_hits}/{seams}")
+    if len(paths) > 1:
+        print(f"  ({in_main} in {paths[0].name}, the rest in the other files)")
     if hits < len(CHECKS):
         print("  A ✗ means the keywords weren't found close together. Check the document "
               "before calling it a miss.")
