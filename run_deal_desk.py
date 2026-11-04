@@ -15,11 +15,15 @@ Ctrl-C interrupts the session so it stops spending, then downloads whatever exis
 
 Usage:
     uv run python run_deal_desk.py
+    DEAL_RFP=~/private/rfp.md uv run python run_deal_desk.py   # another RFP (.md / .txt)
+
+Keep real RFPs outside this repo: it is public. See demo/README.md, "Running it on real data".
 """
 
 import os
 import time
 from datetime import datetime, timezone
+from pathlib import Path
 
 import common
 from common import (BRANCH, HERE, INPUTS_DIR, NAMESPACE, OUTPUTS_DIR, PROFILE, PROFILES,
@@ -28,6 +32,13 @@ from common import (BRANCH, HERE, INPUTS_DIR, NAMESPACE, OUTPUTS_DIR, PROFILE, P
 
 DATA = HERE / "synthetic-data"
 RFP = DATA / "rfp-acme-corp.md"
+if os.environ.get("DEAL_RFP"):  # run the swarm on another RFP, e.g. real data for a demo
+    RFP = Path(os.environ["DEAL_RFP"]).expanduser().resolve()
+    if not RFP.is_file():
+        raise SystemExit(f"DEAL_RFP: no such file: {RFP}")
+    if RFP.suffix.lower() not in (".md", ".txt"):
+        raise SystemExit(f"DEAL_RFP must be .md or .txt (got {RFP.suffix}). Convert it first, "
+                         "e.g. `pdftotext -layout rfp.pdf rfp.txt` or `pandoc rfp.docx -o rfp.md`.")
 INPUT_FILES = [RFP, DATA / "past-wins.json"]  # the capability map is a skill (product-overview)
 
 
@@ -163,7 +174,7 @@ def main() -> None:
     session = client.beta.sessions.create(
         agent=coordinator["id"],
         environment_id=environment_id,
-        title=f"Deal Desk: Acme Corp RFP · {NAMESPACE}",
+        title=f"Deal Desk: {RFP.stem} · {NAMESPACE}",
         resources=resources,
         budget={"type": "limit", "max_list_cost": {"amount": budget_cents, "currency": "USD"}},
     )

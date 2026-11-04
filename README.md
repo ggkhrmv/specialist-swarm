@@ -116,6 +116,7 @@ specialist-swarm/
 ├── download_deliverable.py        (re-download a session's output files)
 ├── stretch_critic_subagent.py     (stretch S2: critic agent)
 ├── tests/offline_check.py         ($0 fake-client run of the whole pipeline; CI runs it)
+├── demo/                          (demo kit: pitch, Acme answer key, run of show, real data; scorecard.py)
 ├── scripts/wt.py                  (worktrees: new / ls / ship / clean)
 ├── .claude/                       (team settings: hooks, permissions)
 ├── skills/                        (Deal Desk skills, one per specialist, + the asset-forge suite)
