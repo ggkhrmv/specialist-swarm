@@ -142,7 +142,7 @@ specialist-swarm/
 ├── record_outcome.py              (stretch S3: tell memory how a deal went)
 ├── tests/offline_check.py         ($0 fake-client run of the whole pipeline; CI runs it)
 ├── evals/                         (promptfoo evals: cases, grader, provider; run with evals/pf)
-├── demo/                          (demo kit: pitch, Acme answer key, run of show, real data; scorecard.py)
+├── demo/                          (demo kit: pitch, Acme answer key, run of show, real data; scorecard.py; slides.html)
 ├── scripts/wt.py                  (worktrees: new / ls / ship / clean)
 ├── .claude/                       (team settings: hooks, permissions)
 ├── skills/                        (Deal Desk skills, one per specialist, + the asset-forge suite)
@@ -172,6 +172,7 @@ specialist-swarm/
 | `diagram-spec` | Hand-built SVG diagrams that are semantically right and geometrically verified |
 | `capability-map` | A reusable, fillable capability/maturity assessment as one HTML file |
 | `presentation-websites` | Brand-agnostic, self-contained single-file presentation sites: you supply the brand kit (tokens, fonts, logo) |
+| `diagram-design` | Editorial HTML + SVG diagrams in 45 types (architecture, flowchart, sequence, swimlane…). Vendored from [cathrynlavery/diagram-design](https://github.com/cathrynlavery/diagram-design) (MIT) at `f24d98b` and symlinked into `.claude/skills/`, so Claude Code in this repo loads it. To refresh it, copy `skills/diagram-design/` from a newer upstream commit and update the hash |
 
 Examples in the suite use `[FIRM]`, `[CLIENT]` and `[REFERENCE-x]` placeholders, and every worked case is fictional. Some skills optionally call `humanizer`, `writing`, `dataviz` or `smd-review` when they're installed; none of them require these.
 
