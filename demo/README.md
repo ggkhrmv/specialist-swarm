@@ -77,40 +77,49 @@ $800–840K a year. The ceiling is 25% off, about $600–630K a year, or 30% if 
 MFN, Net 90, uncapped liability, no-notice audits, IP assignment and the subprocessor veto. Win on TCO and real-time
 ingest, not on Power BI.
 
-### What the rehearsal produced (2026-11-04, `demo` profile)
+### What the rehearsals produced (2026-11-04, `demo` profile)
 
-These are the moments to point at in the document. Checked by hand against the docx.
+Two rehearsals, both checked by hand against the documents. **Present run 2:** it ran on the final swarm and shows the
+discount-for-commitment seam most clearly. Its files, and run 1's, are in `~/deal-desk-rehearsal/` on the presenting
+laptop.
 
-- **Price:** it opens at **20% off ($576K a year)**. Years 1–3 are flat, and the renewal years carry a fixed 5% step
-  written into the schedule, which gives Acme "fixed at signing" without an index (C2). The 5-year total is $2.97M
-  against $3.6M at list.
-- **The walk-away line is in a second file.** Without being asked, the coordinator wrote
-  `outputs/internal-deal-notes.md`: go to 25% only with a hard 3-year commitment, a reference agreement and the
-  escalator, with VP Sales sign-off, and walk away above that. It also lists the levers held back and the open
-  sign-offs, under "keep this file away from the customer". **That's the senior-partner moment of the demo.**
-- **MFN is declined and replaced with something:** "five years of contractual price certainty" (C4).
-- **99.99% is a priced option** on an active-active EU region pair at $80–120K a year (C8). The remedy is service
-  credits up to 30%, with termination only for chronic failure: three missed months in any six (C9).
-- **The legal table:** a 12-month cap, or 24 months for security breaches (C6); one audit a year on 30 days' notice
-  (C7); a perpetual licence instead of assignment (C10); a subprocessor list with notice and an objection right (C11).
-- **It's honest about what's open:** customer references, unpriced implementation services and the document date.
-- **Competitors are named in the internal notes, not in the proposal:** Fabric "may be bundled with E5", and Databricks
-  "went to 40% on Pied Piper" (C12).
-- **Watch for:** Competitive Intel sent its report three times, which adds noise to the event stream.
+**Run 2 (final swarm), the moments to point at:**
+- **The fan-out, measured:** four specialists briefed within 0.7 s, and four reports in **46 s of wall time for 148 s of
+  specialist work**. Read that line out at 2:00.
+- **Two priced options instead of a yes or a no:** A is 20% off ($576K a year, five-year total $2.93M). B is **25% off
+  for a committed three-year term plus a reference, with convenience termination only from the end of year 3**
+  (five-year total $2.75M). That's seam C5, resolved on the page: the bigger discount is tied to the commitment that
+  justifies it.
+- **It says no to 35% in one line:** "We do not meet the 35% floor in 3.3", then offers a TCO comparison on Acme's own
+  workload (C1).
+- **Every fee is fixed at signature** with no index link (C2). **MFN is declined**, because the fixed schedule "gives
+  Acme the same protection with certainty" (C4).
+- **99.99% is a priced option:** active-active across two EU regions at $80–120K a year, on top of the fees (C8).
+- **A 24-week plan:** weeks 0–2, 9–16 and 17–24, with an 80k+ events/s load test (C13).
+- **The coordinator caught a blank report.** Technical Fit's first answer came back empty, and the coordinator noticed
+  and re-briefed it. If that happens live, it's the "one follow-up" rule working: say so.
+- **Two judgment calls to own:** it offers **Net 60**, which the playbook reserves for Fortune 500 customers (C3,
+  generous), and it doesn't name Fabric or E5, positioning *inside* Acme's Microsoft estate instead (C12, partial).
+
+**Run 1 (before #3 and #6), and what varies between runs:** it opened at the same 20% and $576K. It also wrote, unprompted,
+`internal-deal-notes.md` for the team, with the walk-away line (25% only with commitment, reference and escalator, VP
+Sales sign-off) and Fabric/E5 positioning kept out of the customer's sight. Run 2 didn't write notes, so **don't promise
+the notes file live**. Show it from run 1 as "what it does when it has more to tell the team", or skip it. Competitive
+Intel sent its report three times in run 1, which adds noise to the event stream.
 
 ### Proving it: the scorecard
 
 ```bash
-uv run python demo/scorecard.py                       # proposal docx + internal deal notes from outputs/
+uv run python demo/scorecard.py                       # outputs/: the proposal, plus the notes if the same run wrote them
 uv run python demo/scorecard.py <file> ... --show     # specific files; prints the paragraph behind each ✓
 ```
 
 It costs $0, runs offline and uses only the standard library. It prints one line per trap and ends with
-`Traps handled: N/13   cross-lane seams: M/5`. A hit that was found only in the internal notes is marked
-`[in internal-deal-notes.md]`. It's a keyword proximity check, not a judge. Calibration: the raw RFP scores **0/13**
-(it raises every trap and answers none), a hand-written good answer scores **13/13**, and the rehearsal scores
-**13/13**: 12 in the proposal and C12 in the notes, the same as a hand check. Before you quote a ✗ on stage, confirm it
-in the document.
+`Traps handled: N/13   cross-lane seams: M/5`. A hit found only in the internal notes is marked
+`[in internal-deal-notes.md]`. A notes file left over from an earlier run is skipped. It's a keyword proximity check,
+not a judge. Calibration, each result matching a hand check: the raw RFP scores **0/13** (it raises every trap and
+answers none), a hand-written good answer **13/13**, run 1 **13/13** (12 in the proposal, C12 in the notes) and run 2
+**12/13** (C12 partial, see above). Before you quote a ✗ on stage, confirm it in the document.
 
 ## Run of show
 
@@ -121,13 +130,13 @@ them if a later run differs.
 | Time | Screen | What happens | What you say |
 | --- | --- | --- | --- |
 | 0:00 | RFP, §3–4 highlighted | | "Acme wants 35% off, a 30-day exit, uncapped liability and 99.99% uptime. Four teams would spend a week on this. Watch." |
-| 0:30 | Terminal | `uv run python run_deal_desk.py`. Four `[brief →]` lines appear within seconds. | "One partner, four specialists, briefed in the same instant. None of them sees the others' work, so nobody anchors on anybody." |
+| 0:30 | Terminal | `uv run python run_deal_desk.py`. Four `[brief →]` lines, then `[fan-out] 4 specialists briefed within 0.7s`. | "One partner, four specialists, briefed in the same instant. None of them sees the others' work, so nobody anchors on anybody." |
 | 1:00 | `skills/pricing-playbook/SKILL.md` | | "This is the pricing desk's own rulebook, in plain text. They own it. Change a line and the next deal follows it. No code." |
 | 1:30 | Console trace (URL printed at start) | One specialist thread reading its skill and the RFP | "Every thread is traced. You can audit why it said what it said." |
-| 2:00 | Terminal | `[report ←]` lines come back, and the partner cross-checks | "Now the part nobody has time for: reading the reports *against each other*." Point at one seam, C5 or C8. |
-| 2:45 | Rehearsed `proposal-response.docx` | Title page, exec summary, commercial, contract approach, risks | Walk the headline: 20% off, $576K a year, fixed for five years. Show C8: "yes to 99.99%, at a price". Then open `internal-deal-notes.md`: "and here's the walk-away line it kept for us." |
-| 4:00 | Terminal | `uv run python demo/scorecard.py` | "13 traps in this RFP. It handled 13, including all 5 that only show when two teams compare notes." |
-| 4:30 | Run history (end of the live run) | Cost and time | "That review cost $1.31 and took under 6 minutes. Your playbooks, your format, every deal." |
+| 2:00 | Terminal | `[report ←]` lines come back, and the partner cross-checks | Read out the `[fan-in]` line: "46 seconds of wall time for 148 seconds of specialist work." Then: "Now the part nobody has time for: reading the reports *against each other*." |
+| 2:45 | Rehearsed `proposal-response.docx` | Title page, exec summary, commercial, contract approach, risks | Walk the two options: 20% off, or 25% *only* for a committed three-year term (seam C5). Show C8: "yes to 99.99%, at a price". Optional: run 1's `internal-deal-notes.md`, "the walk-away line it kept for us". |
+| 4:00 | Terminal | `uv run python demo/scorecard.py` | "13 traps in this RFP. It handled 12, including 4 of the 5 that only show when two teams compare notes. The one it softened, Fabric, it handled by positioning inside Microsoft." Quote the score of the document you actually show. |
+| 4:30 | Run history (end of the live run) | Cost and time | "That review cost about a dollar and took under 5 minutes. Your playbooks, your format, every deal." |
 
 **2-minute cut:** the 0:30 fan-out, the 2:00 seam, the docx headline and the scorecard number.
 
@@ -204,6 +213,7 @@ mode B with the real document.
 | Date | Session | Swarm | Minutes | Cost | Traps | Seams |
 | --- | --- | --- | --- | --- | --- | --- |
 | 2026-11-04 | `sesn_01WhtcNNpDUwUrza15Vh4Htm` | `demo`, before #3 and #6 | 5.4 | $1.31 | 13/13 (12 in the docx) | 5/5 |
+| 2026-11-04 | `sesn_019zRXdTu6K1DS7fi2tWR3Vo` | `demo`, final (with #3 and #6) | 4.3 | $1.11 | 12/13 | 4/5 |
 
 The rehearsal files are kept outside the repo, in `~/deal-desk-rehearsal/<date>-demo/` on the presenting laptop.
 
@@ -217,8 +227,8 @@ The rehearsal files are kept outside the repo, in `~/deal-desk-rehearsal/<date>-
   checks the result.
 - **"How do we make it ours?"** Edit four markdown files, then run `setup_swarm.py`. The firm-voice skill (stretch S1)
   changes the tone the same way.
-- **"What does it cost?"** The rehearsal cost $1.31 at list price and took under 6 minutes for the whole review and
-  document. Every session has a hard cap ($10 on `demo`).
+- **"What does it cost?"** The two rehearsals cost $1.11 and $1.31 at list price, and took 4.3 and 5.4 minutes for
+  the whole review and the document. Every session has a hard cap ($10 on `demo`).
 - **"What if a specialist is wrong?"** The partner sends one follow-up when a report misses something material. The
   optional Critic agent (stretch S2) reviews the draft before it ships. A human signs off before anything is sent.
 - **"Is our data safe?"** It runs on the Anthropic API only. Inputs are mounted read-only, specialists can't write or
