@@ -246,16 +246,20 @@ def download_outputs(client: anthropic.Anthropic, session_id: str,
                      out_dir: Path | None = None, attempts: int = 4) -> list[Path]:
     """Download every file the session wrote to /mnt/session/outputs/.
 
-    Files show up in the listing a few seconds after the session goes idle, so an
-    empty listing is retried a few times before giving up.
+    The session's listing also holds the input files we uploaded (the RFP,
+    past-wins.json). The API marks those `downloadable=False` and rejects a
+    download, so they are skipped. Outputs show up a few seconds after the session
+    goes idle, so a listing with no downloadable file is retried a few times
+    before giving up.
     """
     out_dir = out_dir or LOCAL_OUTPUTS
     files = []
     for attempt in range(attempts):
         # Listing by scope_id needs the managed-agents beta, which files.list
         # doesn't add on its own.
-        files = list(client.beta.files.list(scope_id=session_id,
-                                            betas=["managed-agents-2026-04-01"]).data)
+        listing = client.beta.files.list(scope_id=session_id,
+                                         betas=["managed-agents-2026-04-01"]).data
+        files = [f for f in listing if f.downloadable is not False]
         if files:
             break
         if attempt < attempts - 1:
