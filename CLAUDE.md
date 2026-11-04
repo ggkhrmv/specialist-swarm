@@ -27,8 +27,9 @@ SessionStart hook runs `uv sync` when one is missing.
 | --- | --- | --- |
 | `uv run python tests/offline_check.py [-v]` | $0, seconds | Runs the whole pipeline against a fake client and validates every request against the installed SDK's types. Run it after every change. CI runs it on every PR. |
 | `uv run python setup_swarm.py` | $0 | Creates or updates this checkout's environment, skills, specialists and coordinator. Idempotent. Re-run it after any prompt, skill, description or profile change. |
-| `uv run python run_deal_desk.py` | **real money**, capped per profile | Runs one session against the RFP: streams events, downloads `outputs/`, appends to `runs.jsonl` and prints the run history. |
+| `uv run python run_deal_desk.py` | **real money**, capped per profile | Runs one session against the RFP: streams events, downloads `outputs/`, appends to `runs.jsonl` and prints the run history. `DEAL_RFP=<path.md\|.txt>` swaps in another RFP (keep real ones outside this public repo). |
 | `uv run python download_deliverable.py [sesn_…]` | $0 | Re-downloads a session's output files. |
+| `uv run python demo/scorecard.py [file] [--show]` | $0 | Scores the docx against the 13 traps in the Acme RFP. `demo/README.md` is the demo kit: pitch, answer key, run of show, real-data plan. |
 | `uv run python stretch_critic_subagent.py` | $0 | Adds the Critic to the roster and the prompt. |
 | `python3 scripts/wt.py new\|ls\|ship [--merge]\|clean` | ship pushes | Worktree lifecycle (see Team workflow). |
 
