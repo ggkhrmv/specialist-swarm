@@ -1,0 +1,25 @@
+# Deal Desk evals (Scenario Card A): every specialist, and the Critic when it is set
+# up, run as real Managed Agents sessions on the Acme RFP and targeted variants, then
+# graded by deterministic checks over a structured readout (evals/grading.py).
+#
+# Run through the wrapper, which pins promptfoo and uses this checkout's .venv:
+#   evals/pf eval                                 # all cases, live agents
+#   evals/pf eval --filter-metadata flow=legal    # one agent
+#   evals/pf view                                 # browse results
+# Cases and ground truth: evals/cases.py. Modes ($0 wiring checks etc.): evals/provider.py.
+description: Deal Desk specialists (Card A)
+
+prompts:
+  - "{{brief}}"
+
+providers:
+  - id: file://provider.py
+    label: deal-desk
+    config:
+      timeout: 900000 # ms; each case also has its own 14-minute ceiling (harness.py)
+      workers: 4 # parallel sessions
+
+tests:
+  - path: file://cases.py:create_tests
+    config:
+      flows: [pricing, legal, technical_fit, competitive, critic]

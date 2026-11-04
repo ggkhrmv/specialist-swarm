@@ -34,12 +34,15 @@ SessionStart hook runs `uv sync` when one is missing.
 | `uv run python stretch_critic_subagent.py` | $0 | Adds the Critic to the roster and the prompt. |
 | `uv run python stretch_memory.py [--show]` | $0 | S3: creates this checkout's memory store, which every later run then attaches. Lists (or prints) what it holds. |
 | `uv run python record_outcome.py "<Customer>" "<what happened>"` | $0 | S3: writes a deal's real outcome into the memory store, for the next run to learn from. |
+| `evals/pf [--filter-metadata flow=<agent>] [--repeat N]` | **real money**, $1 cap per case | promptfoo evals: every specialist (and the Critic) as real agents on 26 cases, graded by deterministic checks. `evals/pf view` opens the results. |
+| `evals/pf -c evals/e2e.yaml` | **real money**, profile cap | The whole swarm end to end, without the memory store: orchestration, the 13 traps, the proposal's commitments. |
+| `EVAL_MODE=fake-oracle evals/pf` | $0, seconds | Wiring check for the evals, no API calls (`fake-null` must fail every case). |
 | `python3 scripts/wt.py new\|ls\|ship [--merge]\|clean` | ship pushes | Worktree lifecycle (see Team workflow). |
 
-There is no linter or unit-test suite; `tests/offline_check.py` is the gate.
+There is no linter or unit-test suite; `tests/offline_check.py` is the gate, and it also validates every eval case.
 
 **Rules for Claude:**
-- Never run `run_deal_desk.py` unless the user asks for a run: it spends money. `.claude/settings.json` forces a prompt for it.
+- Never run `run_deal_desk.py` or a live `evals/pf` unless the user asks for a run: they spend money. `.claude/settings.json` forces a prompt for `run_deal_desk.py`.
 - `setup_swarm.py` is free, but it creates persistent cloud agents that can only be archived, never deleted. Run it once per worktree, and again when config changes.
 - Never read, print or edit `.env`. The repo is **public** (github.com/ggkhrmv/specialist-swarm).
 
@@ -100,6 +103,33 @@ There is no linter or unit-test suite; `tests/offline_check.py` is the gate.
 - **Managed Agents runs on the Anthropic API only:** no Bedrock keys, no company gateways.
 - Under the `auto` permission policy the server may pause a tool call. `run_deal_desk.py` asks at the terminal and
   denies when there is no TTY.
+
+## Evals (promptfoo)
+
+- **What runs:** `evals/pf` is a wrapper around a pinned promptfoo (Node, through `npx`) that uses this checkout's
+  `.venv`. It turns promptfoo's response cache off, so every run calls the real agents. `provider.py` runs each case
+  against this checkout's **stored** agents: a session per case for a specialist or the Critic (through
+  `run_deal_desk.stream_session`, with paused tool calls denied), or the whole swarm for the end-to-end case.
+  Nothing is re-implemented. Run `setup_swarm.py` first, and re-run it after a prompt change, or you measure the old
+  agents.
+- **Cases** (`evals/cases.py`): 27 cases, each probing the rules an agent must apply. They run on the Acme RFP or on a
+  variant with a few clauses swapped, so exactly one rule flips. Ground truth comes from the playbooks and
+  `demo/README.md`'s answer key, never from a model. Cases cover both directions (accept Net 60 for a Fortune 500
+  customer, flag nothing on a clean RFP, rate a supported requirement "full"), so "refuse everything" fails. Critic
+  cases run only when the Critic is set up.
+- **Grading** (`evals/grading.py`): a judge model, never the agent's own model, records what the answer says as JSON
+  (structured outputs). Deterministic checks then compare that readout with the ground truth. Every case also requires
+  `substantive`, so an empty answer can't pass a "nothing to flag" case. The end-to-end case also scores the docx
+  with `demo/scorecard.py`'s 13 traps.
+- **Modes** (`EVAL_MODE`): `live` (default), `reuse` re-grades the last saved live answers ($0 once the readouts are
+  cached, under `evals/.runs/`), `oracle`/`null` put the reference or an empty answer through the real judge (cents),
+  and `fake-oracle`/`fake-null` test the wiring at $0. Infrastructure problems (not set up, timeout, budget, wrong
+  served model) show as promptfoo **errors**, never as failed answers.
+- **Adding a case:** append to the flow's list in `cases.py` with `checks`, `gold` (the readout of a perfect answer)
+  and, for a variant, the exact clause swaps. `tests/offline_check.py` fails until the reference answer passes every
+  check and an empty answer fails.
+- **Judge prompt changes** invalidate the readout cache automatically (the cache key includes the prompt and
+  schema).
 
 ## Team workflow
 

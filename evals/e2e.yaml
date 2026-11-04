@@ -1,0 +1,21 @@
+# Deal Desk end to end: the coordinator runs the whole swarm on the Acme RFP. Scored on
+# orchestration (parallel fan-out with file paths, every report back), the docx against
+# the 13 traps of demo/README.md (demo/scorecard.py), and what the proposal commits to.
+# Expensive: one full swarm run per repeat, capped by the checkout's profile budget.
+#   evals/pf eval -c evals/e2e.yaml
+description: Deal Desk end to end (Card A)
+
+prompts:
+  - "{{brief}}"
+
+providers:
+  - id: file://provider.py
+    label: deal-desk-e2e
+    config:
+      timeout: 2400000 # ms; the case itself stops at 38 minutes (harness.py)
+      workers: 1
+
+tests:
+  - path: file://cases.py:create_tests
+    config:
+      flows: [coordinator]
