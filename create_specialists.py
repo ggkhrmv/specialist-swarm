@@ -23,10 +23,28 @@ Usage:
     uv run python create_specialists.py
 """
 
+import os
+
 from common import (PROFILE, agent_metadata, agent_toolset, get_client, load_prompt,
                     load_state, model_for, require, save_state, upsert_agent)
 
 READ_ONLY = ("read", "glob", "grep")
+
+# Past wins from a CRM MCP server instead of past-wins.json. Set CRM_MCP_URL (shell or
+# .env) to the PUBLIC https URL of the server, e.g. a tunnel to synthetic_crm_mcp.py:
+# managed agents run in Anthropic's cloud and cannot reach localhost.
+CRM_MCP_URL = os.environ.get("CRM_MCP_URL", "").strip()
+
+
+def mcp_config(spec_key: str) -> dict:
+    """Extra agent config that attaches the CRM MCP server to the Pricing Specialist."""
+    if spec_key != "pricing" or not CRM_MCP_URL:
+        return {}
+    return {
+        "mcp_servers": [{"type": "url", "name": "synthetic-crm", "url": CRM_MCP_URL}],
+        "mcp_toolset": {"type": "mcp_toolset", "mcp_server_name": "synthetic-crm",
+                        "default_config": {"permission_policy": {"type": "auto"}}},
+    }
 
 # skill folder name -> keys of the agents that carry it. Keys are specialist keys,
 # plus "coordinator" and "critic". The first four are the Deal Desk domain skills;
@@ -65,7 +83,9 @@ SPECIALISTS = [
         "key": "pricing",
         "name": "Pricing Specialist",
         "description": ("Recommends commercial terms for an RFP: tier, list price, discount "
-                        "band, payment terms, concessions. Give it the RFP and past-wins.json paths."),
+                        "band, payment terms, concessions. Give it the RFP path"
+                        + (" (past wins come from the CRM MCP)." if CRM_MCP_URL
+                           else " and the past-wins.json path.")),
         "role": "specialist",
     },
     {
@@ -100,13 +120,16 @@ def main() -> None:
 
     for spec in SPECIALISTS:
         owned = skills_for(spec["key"])
+        mcp = mcp_config(spec["key"])
+        mcp_toolset = mcp.pop("mcp_toolset", None)  # goes into `tools`; mcp_servers stays
         agent, action = upsert_agent(
             client, saved.get(spec["key"]),
             name=spec["name"],
             description=spec["description"],
             model=model_for(spec["role"]),
             system=load_prompt(spec["key"]),
-            tools=agent_toolset(only=READ_ONLY),
+            tools=agent_toolset(only=READ_ONLY) + ([mcp_toolset] if mcp_toolset else []),
+            **mcp,
             skills=skill_refs(spec["key"], skills),
             metadata=agent_metadata(spec["key"]),
         )
