@@ -35,7 +35,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 import common
-from common import (BRANCH, HERE, INPUTS_DIR, NAMESPACE, OUTPUTS_DIR, PROFILE, PROFILES,
+from common import (BRANCH, HERE, crm_vault_ids, INPUTS_DIR, NAMESPACE, OUTPUTS_DIR, PROFILE, PROFILES,
                     approve_tool_call, download_outputs, get_client, load_state, record_run,
                     require, save_state, session_url, sha256_of)
 from stretch_memory import memory_resource
@@ -276,12 +276,14 @@ def main(argv: list[str] | None = None) -> None:
     if memory:
         resources.append(memory)
         print(f"  attached  memory store {memory['memory_store_id']} (read-write)")
+    vault_ids = crm_vault_ids(client, state)  # [] unless MCP_CRM_URL is set
 
     session = client.beta.sessions.create(
         agent=coordinator["id"],
         environment_id=environment_id,
         title=f"Deal Desk: {rfp.stem} · {NAMESPACE}",
         resources=resources,
+        **({"vault_ids": vault_ids} if vault_ids else {}),
         budget={"type": "limit", "max_list_cost": {"amount": budget_cents, "currency": "USD"}},
     )
     state["last_session_id"] = session.id

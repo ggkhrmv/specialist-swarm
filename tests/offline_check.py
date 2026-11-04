@@ -46,6 +46,8 @@ from anthropic.resources.beta.memory_stores.memories import Memories  # noqa: E4
 from anthropic.resources.beta.memory_stores.memory_stores import MemoryStores  # noqa: E402
 from anthropic.resources.beta.sessions.events import Events  # noqa: E402
 from anthropic.resources.beta.sessions.sessions import Sessions  # noqa: E402
+from anthropic.resources.beta.vaults.credentials import Credentials  # noqa: E402
+from anthropic.resources.beta.vaults.vaults import Vaults  # noqa: E402
 from anthropic.resources.files import Files  # noqa: E402
 from anthropic.resources.skills.skills import Skills  # noqa: E402
 from anthropic.resources.skills.versions import Versions  # noqa: E402
@@ -269,8 +271,22 @@ class FakeClient:
                 fake.calls.append(("memory_stores.create", kw))
                 return Obj(id="memstore_1")
 
+        class _Credentials:
+            def create(self, vault_id, **kw):
+                validate(Credentials.create, {"vault_id": vault_id, **kw}, "vaults.credentials.create")
+                fake.calls.append(("vaults.credentials.create", {"vault_id": vault_id, **kw}))
+                return Obj(id="vcrd_1")
+
+        class _Vaults:
+            credentials = _Credentials()
+
+            def create(self, **kw):
+                validate(Vaults.create, kw, "vaults.create")
+                fake.calls.append(("vaults.create", kw))
+                return Obj(id="vlt_1")
+
         self.beta = Obj(agents=_Agents(), environments=_Environments(), sessions=_Sessions(),
-                        files=_BetaFiles(), memory_stores=_MemoryStores())
+                        files=_BetaFiles(), memory_stores=_MemoryStores(), vaults=_Vaults())
         self.skills = _Skills()
         self.files = _Files()
 
@@ -458,6 +474,32 @@ def main() -> None:
     coordinator = fallback.of("agents.create")[-1][1]
     assert coordinator["multiagent"]["type"] == "coordinator", coordinator["multiagent"]
     assert "# Workflow runs" not in coordinator["system"]
+
+    # 4b. CRM MCP: only Pricing gets the server + toolset; the token goes to a Vault, not state.
+    crm_url = "https://crm.example.com/mcp"
+    os.environ.update(MCP_CRM_URL=crm_url, MCP_TOKEN="offline-secret")
+    try:
+        crm = FakeClient(events=events)
+        use(crm, tmp, "crm")
+        step("setup_swarm (CRM MCP on Pricing)", setup_swarm.main)
+        by_name = {c[1]["name"]: c[1] for c in crm.of("agents.create")}
+        pricing = by_name["Pricing Specialist"]
+        assert pricing["mcp_servers"] == [{"type": "url", "name": "crm", "url": crm_url}], pricing
+        assert any(t["type"] == "mcp_toolset" and t["mcp_server_name"] == "crm"
+                   for t in pricing["tools"]), pricing["tools"]
+        others = [c for n, c in by_name.items() if n != "Pricing Specialist"]
+        assert all(not c.get("mcp_servers") for c in others), "CRM leaked to another agent"
+        step("run_deal_desk (CRM vault)", run_deal_desk.main)
+        cred = crm.of("vaults.credentials.create")[0][1]
+        assert cred["auth"] == {"type": "static_bearer", "mcp_server_url": crm_url,
+                                "token": "offline-secret"}, cred
+        assert crm.of("sessions.create")[0][1]["vault_ids"] == ["vlt_1"]
+        assert "offline-secret" not in common.STATE_FILE.read_text(), "token saved to state"
+        step("run_deal_desk (CRM vault reused)", run_deal_desk.main)
+        assert len(crm.of("vaults.create")) == 1, "vault should be reused"
+    finally:
+        os.environ.pop("MCP_CRM_URL", None)
+        os.environ.pop("MCP_TOKEN", None)
 
     # 5. The demo profile resolves to the full models.
     common.PROFILE = "demo"
